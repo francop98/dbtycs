@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DBTYCS - Cuestionario inicial</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../styles/onboarding.css">
+</head>
+<body>
+    <div class="page wizard-container">
+        <div class="wizard-header">
+            <div>
+                <span class="eyebrow" id="stepCounterText">Paso 1 de 8</span>
+                <h1 style="font-size: 20px; margin: 0;">Configuración de perfil</h1>
+            </div>
+            <div class="dial-wrapper">
+                <svg class="dial-svg" viewBox="0 0 56 56">
+                    <circle class="dial-bg" cx="28" cy="28" r="24"></circle>
+                    <circle class="dial-fill" id="dialFill" cx="28" cy="28" r="24"></circle>
+                </svg>
+                <div class="dial-text" id="dialLabel">1</div>
+            </div>
+        </div>
+
+        <form id="onboardingForm" onsubmit="return false;">
+            <div class="step active" data-step="1">
+                <h2>Datos personales</h2>
+                <p class="step-desc">Ingresá tu información básica para personalizar tus métricas.</p>
+                
+                <div class="form-group">
+                    <label for="nombre">Nombre y Apellido</label>
+                    <input type="text" id="nombre" placeholder="Ej. Ana García" required />
+                </div>
+                <div class="form-group">
+                    <label for="fechaNacimiento">Fecha de Nacimiento</label>
+                    <input type="date" id="fechaNacimiento" required />
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="peso">Peso (kg)</label>
+                        <input type="number" id="peso" step="0.1" placeholder="Ej. 65" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="altura">Altura (cm)</label>
+                        <input type="number" id="altura" placeholder="Ej. 170" required />
+                    </div>
+                </div>
+            </div>
+
+            <div class="step" data-step="2">
+                <h2>Tipo de Diabetes</h2>
+                <p class="step-desc">Seleccioná tu diagnóstico principal.</p>
+                <div class="grid-options" id="tipoDiabetesGrid">
+                    <div class="option-card" data-value="tipo1">
+                        <span class="opt-title">Diabetes Tipo 1</span>
+                        <span class="opt-desc">Autoinmune, tratamiento con insulina.</span>
+                    </div>
+                    <div class="option-card" data-value="tipo2_insulina">
+                        <span class="opt-title">Diabetes Tipo 2</span>
+                        <span class="opt-desc">Con requerimiento de insulina.</span>
+                    </div>
+                    <div class="option-card" data-value="lada">
+                        <span class="opt-title">Diabetes LADA</span>
+                        <span class="opt-desc">Diabetes autoinmune del adulto.</span>
+                    </div>
+                    <div class="option-card" data-value="otro">
+                        <span class="opt-title">Otro tipo</span>
+                        <span class="opt-desc">Gestacional, MODY u outro origen.</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="anioDiagnostico">Año de diagnóstico (opcional)</label>
+                    <input type="number" id="anioDiagnostico" placeholder="Ej. 2018" />
+                </div>
+            </div>
+
+            <div class="step" data-step="3">
+                <h2>Esquema de tratamiento</h2>
+                <p class="step-desc">¿Cómo administrás tu insulina?</p>
+                <div class="grid-options" id="metodoGrid">
+                    <div class="option-card" data-value="mdi">
+                        <span class="opt-title">Múltiples inyecciones (MDI)</span>
+                        <span class="opt-desc">Lapiceras / jeringas de insulina.</span>
+                    </div>
+                    <div class="option-card" data-value="bomba">
+                        <span class="opt-title">Bomba de insulina</span>
+                        <span class="opt-desc">Microinfusora continua.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step" data-step="4">
+                <h2>Insulinas utilizadas</h2>
+                <p class="step-desc">Ingresá los nombres comerciales de tus insulinas.</p>
+                <div class="form-group">
+                    <label for="insulinaBasal">Insulina Basal / Lenta</label>
+                    <input type="text" id="insulinaBasal" placeholder="Ej. Lantus, Toujeo, Tresiba" />
+                </div>
+                <div class="form-group">
+                    <label for="insulinaRapida">Insulina Rápida / Ultrarrápida</label>
+                    <input type="text" id="insulinaRapida" placeholder="Ej. Novorapid, Humalog, Fiasp" />
+                </div>
+            </div>
+
+            <div class="step" data-step="5">
+                <h2>Rangos y Parámetros</h2>
+                <p class="step-desc">Configurá tus objetivos glucémicos y ratios.</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="rangoMin">Rango Mínimo (mg/dL)</label>
+                        <input type="number" id="rangoMin" value="70" />
+                    </div>
+                    <div class="form-group">
+                        <label for="rangoMax">Rango Máximo (mg/dL)</label>
+                        <input type="number" id="rangoMax" value="180" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ratioIC">Ratio I:C (g/U)</label>
+                        <input type="number" id="ratioIC" placeholder="Ej. 10" />
+                    </div>
+                    <div class="form-group">
+                        <label for="factorCorreccion">Factor de Corrección (mg/dL/U)</label>
+                        <input type="number" id="factorCorreccion" placeholder="Ej. 50" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="step" data-step="6">
+                <h2>Factores especiales</h2>
+                <p class="step-desc">Seleccioná los factores que suelen impactar tu glucemia.</p>
+                <div class="checkbox-group">
+                    <label class="checkbox-item"><input type="checkbox" name="patron" value="fenomeno_alba"> Fenómeno del alba</label>
+                    <label class="checkbox-item"><input type="checkbox" name="patron" value="sensibilidad_ejercicio"> Sensibilidad alta al ejercicio</label>
+                    <label class="checkbox-item"><input type="checkbox" name="patron" value="ciclo_menstrual"> Variaciones por ciclo menstrual</label>
+                    <label class="checkbox-item"><input type="checkbox" name="patron" value="estres"> Sensibilidad a estrés / enfermedad</label>
+                </div>
+            </div>
+
+            <div class="step" data-step="7">
+                <h2>Estilo de vida y actividad física</h2>
+                <p class="step-desc">Esta información ayuda a afinar los cálculos de requerimiento basal.</p>
+                
+                <div class="form-group">
+                    <label>Tipo de actividad laboral / diaria</label>
+                    <div class="grid-options" id="trabajoGrid">
+                        <div class="option-card" data-value="sedentario">
+                            <span class="opt-title">Sedentario</span>
+                            <span class="opt-desc">Trabajo de oficina, muchas horas sentado.</span>
+                        </div>
+                        <div class="option-card" data-value="ligero">
+                            <span class="opt-title">Ligeramente activo</span>
+                            <span class="opt-desc">Caminatas cortas, de pie ocasional.</span>
+                        </div>
+                        <div class="option-card" data-value="activo">
+                            <span class="opt-title">Moderadamente activo</span>
+                            <span class="opt-desc">De pie gran parte del día, movimiento frecuente.</span>
+                        </div>
+                        <div class="option-card" data-value="muy_activo">
+                            <span class="opt-title">Muy activo</span>
+                            <span class="opt-desc">Trabajo físico intenso o exigente.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>Frecuencia de ejercicio programado</label>
+                    <div class="grid-options" id="deporteGrid">
+                        <div class="option-card" data-value="ninguno">
+                            <span class="opt-title">Sin ejercicio regular</span>
+                            <span class="opt-desc">No realizo entrenamiento físico constante.</span>
+                        </div>
+                        <div class="option-card" data-value="1_2">
+                            <span class="opt-title">1 a 2 veces / semana</span>
+                            <span class="opt-desc">Actividad física ocasional.</span>
+                        </div>
+                        <div class="option-card" data-value="3_4">
+                            <span class="opt-title">3 a 4 veces / semana</span>
+                            <span class="opt-desc">Entrenamiento regular moderado.</span>
+                        </div>
+                        <div class="option-card" data-value="5_mas">
+                            <span class="opt-title">5 o más veces / semana</span>
+                            <span class="opt-desc">Entrenamiento intenso o perfil atlético.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step" data-step="8">
+                <h2>Resumen de tu Perfil</h2>
+                <p class="step-desc">Revisá la información antes de guardar.</p>
+                <div class="summary-list" id="summaryList"></div>
+            </div>
+        </form>
+
+        <div class="wizard-footer">
+            <a href="../index.html" class="btn btn-secondary" id="btnInicio" style="text-decoration: none;">Inicio</a>
+            <button type="button" class="btn btn-secondary" id="btnAtras" style="display: none;">Atrás</button>
+            
+            <span style="font-size: 12px; color: #94a3b8;" id="stepCounterFooter">1/8</span>
+            <button type="button" class="btn" id="btnSiguiente">Siguiente</button>
+        </div>
+    </div>
+
+    <!-- Únicamente dejamos el script de comportamiento del botón que interactúa con tu onboarding.js existente -->
+    <script src="../js/onboarding.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const btnInicio = document.getElementById("btnInicio");
+            const btnAtras = document.getElementById("btnAtras");
+            
+            const toggleButtons = () => {
+                const activeStep = document.querySelector('.step.active');
+                if (activeStep && parseInt(activeStep.getAttribute('data-step')) === 1) {
+                    btnInicio.style.display = "inline-flex";
+                    if (btnAtras) btnAtras.style.setProperty("display", "none", "important");
+                } else {
+                    btnInicio.style.display = "none";
+                    if (btnAtras) btnAtras.style.display = "";
+                }
+            };
+
+            const observer = new MutationObserver(toggleButtons);
+            const form = document.getElementById("onboardingForm");
+            if (form) {
+                observer.observe(form, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+            }
+
+            toggleButtons();
+        });
+    </script>
+</body>
+</html>

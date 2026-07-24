@@ -1,0 +1,354 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: #121824;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #e2e8f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.wizard-container {
+    background: #1e293b;
+    width: 100%;
+    max-width: 580px;
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    border: 1px solid #334155;
+}
+
+.wizard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 20px;
+    margin-bottom: 25px;
+}
+
+.eyebrow {
+    font-size: 0.8rem;
+    color: #38bdf8;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dial-wrapper {
+    position: relative;
+    width: 50px;
+    height: 50px;
+}
+
+.dial-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.dial-bg {
+    fill: none;
+    stroke: #334155;
+    stroke-width: 4;
+}
+
+.dial-fill {
+    fill: none;
+    stroke: #38bdf8;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 150.8;
+    stroke-dashoffset: 150.8;
+    transition: stroke-dashoffset 0.4s ease;
+}
+
+.dial-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #f8fafc;
+}
+
+.step {
+    display: none;
+}
+
+.step.active {
+    display: block;
+    animation: fadeIn 0.25s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.step h2 {
+    font-size: 1.4rem;
+    color: #f8fafc;
+    margin-bottom: 6px;
+}
+
+.step-desc {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    margin-bottom: 22px;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #cbd5e1;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 14px;
+    background-color: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #f8fafc;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.grid-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.option-card {
+    border: 2px solid #334155;
+    border-radius: 10px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    background: #0f172a;
+}
+
+.option-card:hover {
+    border-color: #475569;
+    background: #1e293b;
+}
+
+.option-card.selected {
+    border-color: #38bdf8;
+    background-color: rgba(56, 189, 248, 0.1);
+}
+
+.opt-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #f8fafc;
+    margin-bottom: 4px;
+}
+
+.opt-desc {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    line-height: 1.3;
+}
+
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    cursor: pointer;
+    background: #0f172a;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #38bdf8;
+}
+
+.summary-list {
+    background: #0f172a;
+    border-radius: 10px;
+    padding: 16px;
+    border: 1px solid #334155;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #1e293b;
+    font-size: 0.9rem;
+}
+
+.summary-item:last-child {
+    border-bottom: none;
+}
+
+.summary-item .label {
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.summary-item .value {
+    color: #f8fafc;
+    font-weight: 500;
+    text-align: right;
+}
+
+.wizard-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #334155;
+}
+
+.btn {
+    background-color: #0284c7;
+    color: #ffffff;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-align: center;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.btn:hover {
+    background-color: #0369a1;
+}
+
+.btn-secondary {
+    background-color: #334155;
+    color: #cbd5e1;
+}
+
+.btn-secondary:hover {
+    background-color: #475569;
+}
+
+/* ==========================================
+   ADAPTABILIDAD MÓVIL (MOBILE-FIRST CSS) - 150% OPTIMIZADO
+   ========================================== */
+@media (max-width: 600px) {
+    body {
+        padding: 8px;
+        align-items: flex-start;
+    }
+
+    .wizard-container {
+        padding: 16px;
+        border-radius: 12px;
+        margin-top: 5px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+
+    .wizard-header h1 {
+        font-size: 1.1rem !important;
+    }
+
+    /* Evita el zoom automático molesto de iOS/Android al enfocar inputs */
+    .form-group input, 
+    .form-group select, 
+    .form-group textarea {
+        font-size: 16px !important; 
+        padding: 14px 12px;
+    }
+
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .grid-options {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .option-card {
+        padding: 12px;
+    }
+
+    .checkbox-item {
+        padding: 14px 12px;
+    }
+
+    .checkbox-item input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+    }
+
+    .wizard-footer {
+        gap: 8px;
+        margin-top: 20px;
+        padding-top: 15px;
+    }
+
+    .wizard-footer .btn, 
+    .wizard-footer a.btn {
+        flex: 1;
+        padding: 12px 8px;
+        font-size: 0.95rem;
+        min-height: 48px;
+    }
+
+    #stepCounterFooter {
+        font-size: 12px;
+        padding: 0 4px;
+    }
+}
