@@ -109,7 +109,9 @@ header p {
     color: var(--text-main);
 }
 
-/* MODAL DE FICHA MÉDICA */
+/* ==========================================
+   MODAL DE FICHA MÉDICA (ESTILO CLÍNICO)
+   ========================================== */
 .modal {
     display: none;
     position: fixed;
@@ -117,33 +119,112 @@ header p {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(8, 12, 20, 0.88);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     justify-content: center;
     align-items: center;
     z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .modal.active {
     display: flex;
+    opacity: 1;
 }
 
 .modal-content {
-    background: var(--surface);
+    background: #182232;
     color: var(--text-main);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 28px;
+    border: 1px solid #283952;
+    border-top: 4px solid var(--accent);
+    border-radius: 14px;
+    padding: 32px;
     width: 90%;
-    max-width: 520px;
-    max-height: 85vh;
+    max-width: 560px;
+    max-height: 88vh;
     overflow-y: auto;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    transform: translateY(10px);
+    transition: transform 0.3s ease;
+}
+
+.modal.active .modal-content {
+    transform: translateY(0);
 }
 
 .modal-content h2 {
-    font-size: 1.3rem;
+    font-size: 1.25rem;
+    font-weight: 700;
     color: var(--text-main);
-    margin-bottom: 16px;
+    margin-bottom: 4px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-content h2::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background-color: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent);
+}
+
+/* Subtítulo DBTYCS debajo de FICHA MÉDICA RESUMIDA */
+.modal-subtitle {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 22px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    display: block;
+}
+
+/* Estructura clínica de ítems */
+.summary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 16px;
+    background: #111822;
+    border-left: 3px solid #334155;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.summary-item:hover {
+    background: #141d2b;
+    border-left-color: var(--accent);
+}
+
+.summary-item .label {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.summary-item .value {
+    color: var(--text-main);
+    font-weight: 600;
+    text-align: right;
 }
 
 /* REGLAS DE EXPORTACIÓN PDF */
@@ -154,6 +235,8 @@ header p {
 }
 
 .pdf-export-mode .summary-item {
+    background: #f8fafc !important;
+    border-left: 3px solid #0284c7 !important;
     border-bottom: 1px solid #e2e8f0 !important;
     color: #000000 !important;
 }
@@ -163,31 +246,7 @@ header p {
     color: #000000 !important;
 }
 
-/* CAMPOS DE INPUT EN MODAL RÁPIDA Y GENERALES */
-#modalRapida input[type="number"] {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: var(--text-main);
-    border: 1px solid var(--border);
-    padding: 10px 14px;
-    border-radius: 8px;
-    width: 100%;
-    font-size: 0.95rem;
-    outline: none;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-#modalRapida input[type="number"]:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
-}
-
-#modalRapida input[type="number"]::placeholder {
-    color: var(--text-muted);
-}
-
-/* ==========================================
-   ADAPTABILIDAD MÓVIL GLOBAL (STYLES.CSS)
-   ========================================== */
+/* ADAPTABILIDAD MÓVIL */
 @media (max-width: 600px) {
     body {
         padding: 12px;

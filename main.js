@@ -21,6 +21,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Función auxiliar para calcular la edad exacta a partir de la fecha de nacimiento
+    function calcularEdad(fechaNacimientoStr) {
+        if (!fechaNacimientoStr) return null;
+        const fechaNac = new Date(fechaNacimientoStr);
+        if (isNaN(fechaNac.getTime())) return null;
+        
+        const hoy = new Date();
+        let edad = hoy.getFullYear() - fechaNac.getFullYear();
+        const m = hoy.getMonth() - fechaNac.getMonth();
+        if (m < 0 || (m === 0 && hoy.getDate() < fechaNac.getDate())) {
+            edad--;
+        }
+        return edad >= 0 ? edad : null;
+    }
+
     // --- CALCULADORA DE INSULINA BASAL ---
     const btnIrBasal = document.getElementById('btnIrBasal');
     const modalBasal = document.getElementById('modalBasal');
@@ -194,10 +209,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const gramosCarbs = parseFloat(inputCarbs.value) || 0;
             const ratioIC = Number(perfil.ratioIC);
             
-            // 1. Dosis por carbohidratos
             const unidadesCarbs = gramosCarbs / ratioIC;
 
-            // 2. Corrección opcional por glucemia actual
             let unidadesCorreccion = 0;
             const glucemiaActual = parseFloat(inputGlucemiaActual.value);
             const glucemiaObjetivo = parseFloat(inputGlucemiaObjetivo.value) || 100;
@@ -261,6 +274,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const fechaNac = perfil.fechaNacimiento || perfil.fechaNac || perfil.nacimiento;
+        const edadCalculada = calcularEdad(fechaNac);
+        const textoEdad = edadCalculada !== null ? `${edadCalculada} años` : (perfil.edad ? `${perfil.edad} años` : 'No especificado');
+
         const textosActividad = {
             sedentario: 'Sedentario',
             ligero: 'Ligeramente activo',
@@ -270,10 +287,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const items = [
             { label: 'Nombre Completo', val: perfil.nombre || 'No especificado' },
+            { label: 'Edad', val: textoEdad },
             { label: 'Tipo de Diabetes', val: perfil.tipoDiabetes || 'No especificado' },
+            { label: 'Altura', val: perfil.altura ? `${perfil.altura} cm` : 'No especificado' },
             { label: 'Peso Corporal', val: perfil.peso ? `${perfil.peso} kg` : 'No especificado' },
             { label: 'Actividad / Ocupación', val: textosActividad[perfil.trabajo] || 'No especificado' },
-            { label: 'Método / Tratamiento', val: perfil.metodo || 'No especificado' },
+            { label: 'Método / Tratamiento', val: 'Insulinodependiente' },
             { label: 'Insulina Basal', val: perfil.insulinaBasal || 'No especificado' },
             { label: 'Insulina Rápida', val: perfil.insulinaRapida || 'No especificado' },
             { label: 'Ratio Carb', val: perfil.ratioIC ? `${perfil.ratioIC} g/U` : 'No especificado' },
@@ -294,26 +313,37 @@ document.addEventListener('DOMContentLoaded', () => {
         fichaDatos.innerHTML = html;
     }
 
-    // Exportar a PDF
+    // Exportar a PDF optimizado (Evita cortes y mantiene un diseño profesional prolijo)
     if (btnExportarPDF) {
         btnExportarPDF.addEventListener('click', () => {
             const contenido = document.getElementById('contenidoFichaMedica');
             if (!contenido) return;
-            contenido.classList.add('pdf-export-mode');
+
             const nombreUsuario = (perfil && perfil.nombre) ? perfil.nombre : 'Paciente';
+            
+            // Configuración optimizada para escala correcta sin recortes y tamaño exacto en A4
             const opt = {
-                margin: 10,
-                filename: `Ficha_Medica_${nombreUsuario.trim().replace(/\s+/g, '_')}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                margin:       [10, 10, 10, 10], // Márgenes equilibrados en mm
+                filename:     `Ficha_Medica_${nombreUsuario.trim().replace(/\s+/g, '_')}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { 
+                    scale: 2, 
+                    useCORS: true,
+                    letterRendering: true,
+                    backgroundColor: '#182232' // Mantiene la estética oscura formal del panel
+                },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
+            // Oculta temporalmente los botones de acción para que no salgan en el PDF impreso
+            const accionesModal = contenido.querySelector('.modal-actions');
+            if (accionesModal) accionesModal.style.display = 'none';
+
             html2pdf().set(opt).from(contenido).save().then(() => {
-                contenido.classList.remove('pdf-export-mode');
+                if (accionesModal) accionesModal.style.display = 'flex';
             }).catch(err => {
                 console.error('Error generando PDF:', err);
-                contenido.classList.remove('pdf-export-mode');
+                if (accionesModal) accionesModal.style.display = 'flex';
             });
         });
     }
