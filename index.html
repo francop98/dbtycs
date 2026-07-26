@@ -1,157 +1,245 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control - DBTYCS</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de Control - DBTYCS</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header style="display: flex; justify-content: space-between; align-items: flex-start; position: relative;">
-            <div>
-                <h1 id="saludoUsuario">Hola, Usuario</h1>
-                <p>Panel de control principal de tu tratamiento.</p>
-            </div>
-            <!-- Botón de Configuración (Engranaje) -->
-            <button onclick="window.location.href='pages/onboarding.html'" title="Configurar Perfil" style="background: var(--surface); border: 1px solid var(--border); color: var(--text-main); width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);">
-                ⚙️
-            </button>
-        </header>
-        
-        <main>
-            <div class="grid">
-                <!-- Card Ficha Médica -->
-                <div class="link-card" id="cardFichaMedica">
-                    <div class="title">📄 Ficha Médica</div>
-                    <div class="desc">Consulta o descarga tu resumen de perfil de salud.</div>
-                </div>
-
-                <!-- Card Consejos -->
-                <div class="link-card" onclick="window.location.href='pages/consejos.html'">
-                    <div class="title">💡 Consejos</div>
-                    <div class="desc">Tips prácticos para el manejo diario de tu glucemia y bienestar.</div>
-                </div>
-
-                <!-- Card Histórico / Estadísticas -->
-                <div class="link-card" onclick="window.location.href='pages/estadisticas.html'">
-                    <div class="title">📊 Estadísticas e Historial</div>
-                    <div class="desc">Visualizá tus métricas, promedios y tiempo en rango.</div>
-                </div>
-
-                <!-- Card Calculadora (Con botones Basal y Rápida) -->
-                <div class="link-card" id="cardCalculadora">
-                    <div class="title">🧮 Calculadora de Dosis</div>
-                    <div class="desc" style="margin-bottom: 12px;">Herramientas de cálculo para tu tratamiento.</div>
-                    <div style="display: flex; flex-direction: column; gap: 6px;">
-                        <button id="btnIrBasal" class="btn" style="width: 100%; font-size: 0.85rem; padding: 8px;">⚡ Insulina Basal</button>
-                        <button id="btnIrRapida" class="btn" style="width: 100%; font-size: 0.85rem; padding: 8px;">🍽️ Insulina Rápida</button>
-                    </div>
-                </div>
-            </div>
-        </main>
+<div class="container">
+  <header style="display: flex; justify-content: space-between; align-items: flex-start; position: relative;">
+    <div>
+      <h1 id="saludoUsuario">Hola, Usuario</h1>
+      <p>Panel de control principal de tu tratamiento.</p>
     </div>
+    <!-- Botón de Configuración (Engranaje) -->
+    <button onclick="window.location.href='pages/onboarding.html'" title="Configurar Perfil" style="background: var(--surface); border: 1px solid var(--border); color: var(--text-main); width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);">
+      ⚙️
+    </button>
+  </header>
 
-    <!-- Modal Ficha Médica -->
-    <div class="modal" id="modalFicha">
-        <div class="modal-content" id="contenidoFichaMedica">
-            <h2>Ficha Médica Resumida</h2>
-            <span class="modal-subtitle">DBTYCS</span>
-            <div id="fichaDatos"></div>
-            <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                <button id="btnExportarPDF" class="btn">Descargar PDF</button>
-                <button id="btnCerrarModal" class="btn btn-secondary">Cerrar</button>
-            </div>
+  <main>
+    <div class="grid">
+      <!-- Card Ficha Médica -->
+      <div class="link-card" id="cardFichaMedica">
+        <div class="title">📋 Ficha Médica</div>
+        <div class="desc">Consulta o descarga tu resumen de perfil de salud.</div>
+      </div>
+
+      <!-- Card Registro de Insulina -->
+      <div class="link-card" onclick="window.location.href='pages/insulina.html'">
+        <div class="title">🧾 Registro de Insulina</div>
+        <div class="desc">Cargá cada aplicación de basal y rápida, y mirá tus totales por día.</div>
+      </div>
+
+      <!-- Card Registro de Comidas -->
+      <div class="link-card" onclick="window.location.href='pages/registro.html'">
+        <div class="title">🍽️ Registro de Comidas</div>
+        <div class="desc">Cargá tus comidas y controles de glucosa para afinar tu ratio y FSI.</div>
+      </div>
+
+      <!-- Card Consejos -->
+      <div class="link-card" onclick="window.location.href='pages/consejos.html'">
+        <div class="title">💡 Consejos</div>
+        <div class="desc">Tips prácticos para el manejo diario de tu glucemia y bienestar.</div>
+      </div>
+
+      <!-- Card Histórico / Estadísticas -->
+      <div class="link-card" onclick="window.location.href='pages/estadisticas.html'">
+        <div class="title">📊 Estadísticas e Historial</div>
+        <div class="desc">Visualizá tus métricas, promedios y tiempo en rango.</div>
+      </div>
+
+      <!-- Card Calculadora (Con botones Basal, Rápida y Ratio/FSI) -->
+      <div class="link-card" id="cardCalculadora">
+        <div class="title">💉 Calculadora de Dosis</div>
+        <div class="desc" style="margin-bottom: 12px;">Herramientas de cálculo para tu tratamiento.</div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <button id="btnIrBasal" class="btn" style="width: 100%; font-size: 0.85rem; padding: 8px;">Insulina Basal</button>
+          <button id="btnIrRapida" class="btn" style="width: 100%; font-size: 0.85rem; padding: 8px;">Insulina Rápida</button>
+          <button id="btnIrRatioIC" class="btn" style="width: 100%; font-size: 0.85rem; padding: 8px;">Ratio I:C</button>
+          <button id="btnIrFSI" class="btn" style="width: 100%; font-size: 0.85rem; padding: 8px;">FSI</button>
         </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal Ficha Médica -->
+<div class="modal" id="modalFicha">
+  <div class="modal-content" id="contenidoFichaMedica">
+    <h2>Ficha Médica Resumida</h2>
+    <span class="modal-subtitle">DBTYCS</span>
+    <div id="fichaDatos"></div>
+    <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+      <button id="btnExportarPDF" class="btn">Descargar PDF</button>
+      <button id="btnCerrarModal" class="btn btn-secondary">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Calculadora de Insulina Basal -->
+<div class="modal" id="modalBasal">
+  <div class="modal-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h2>Calculadora de Insulina Basal</h2>
+      <button id="btnCerrarModalBasal" class="btn btn-secondary" style="padding: 4px 10px;">&times;</button>
     </div>
 
-    <!-- Modal Calculadora de Insulina Basal -->
-    <div class="modal" id="modalBasal">
-        <div class="modal-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h2>Calculadora de Insulina Basal</h2>
-                <button id="btnCerrarModalBasal" class="btn btn-secondary" style="padding: 4px 10px;">&times;</button>
-            </div>
-            
-            <div id="basalContenidoNormal">
-                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">
-                    Estimación clínica inteligente basada en tu peso corporal, nivel de actividad laboral y deporte registrado.
-                </p>
-                
-                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-                    <p style="font-size: 0.90rem; color: var(--text-main); margin-bottom: 4px;">Peso detectado: <strong id="lblPesoPerfil" style="color: var(--accent);">-- kg</strong></p>
-                    <p style="font-size: 0.85rem; color: var(--text-muted);">Perfil de actividad: <strong id="lblActividadPerfil" style="color: var(--text-main);">--</strong></p>
-                </div>
+    <div id="basalContenidoNormal">
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">
+        Estimación clínica inteligente basada en tu peso corporal, nivel de actividad laboral y deporte registrado.
+      </p>
 
-                <button id="btnCalcularBasalAccion" class="btn" style="width: 100%;">Calcular Dosis Diaria</button>
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+        <p style="font-size: 0.90rem; color: var(--text-main); margin-bottom: 4px;">Peso detectado: <strong id="lblPesoPerfil" style="color: var(--accent);">-- kg</strong></p>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Perfil de actividad: <strong id="lblActividadPerfil" style="color: var(--text-main);">--</strong></p>
+      </div>
 
-                <!-- Resultado -->
-                <div id="resultadoBasalContainer" style="display: none; margin-top: 20px; padding: 16px; background: rgba(56, 189, 248, 0.08); border: 1px solid var(--accent); border-radius: 8px; text-align: center;">
-                    <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Dosis Sugerida</span>
-                    <p id="valorDosisBasal" style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 6px 0;">0 Unidades</p>
-                    <p id="detalleCalculoBasal" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; margin-top: 8px;"></p>
-                </div>
-            </div>
+      <button id="btnCalcularBasalAccion" class="btn" style="width: 100%;">Calcular Dosis Diaria</button>
 
-            <!-- Alerta si falta el peso en el onboarding -->
-            <div id="basalAlertaFaltaDatos" style="display: none; text-align: center; padding: 20px 0;">
-                <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.95rem;">
-                    ⚠️ No encontramos tu peso registrado en la ficha médica. Es necesario configurarlo para realizar el cálculo automático.
-                </p>
-                <button onclick="window.location.href='pages/onboarding.html'" class="btn">Completar Datos en Onboarding</button>
-            </div>
-        </div>
+      <!-- Resultado -->
+      <div id="resultadoBasalContainer" style="display: none; margin-top: 20px; padding: 16px; background: rgba(56, 189, 248, 0.08); border: 1px solid var(--accent); border-radius: 8px; text-align: center;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Dosis Sugerida</span>
+        <p id="valorDosisBasal" style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 6px 0;">0 Unidades</p>
+        <p id="detalleCalculoBasal" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; margin-top: 8px;"></p>
+      </div>
     </div>
 
-    <!-- Modal Calculadora de Insulina Rápida -->
-    <div class="modal" id="modalRapida">
-        <div class="modal-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h2>Calculadora de Insulina Rápida</h2>
-                <button id="btnCerrarModalRapida" class="btn btn-secondary" style="padding: 4px 10px;">&times;</button>
-            </div>
-            
-            <div id="rapidaContenidoNormal">
-                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">
-                    Calcula tu dosis de insulina rápida según los carbohidratos que vas a consumir y tu Ratio I:C configurado.
-                </p>
-                
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label for="inputCarbs" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Carbohidratos a consumir (gramos):</label>
-                    <input type="number" id="inputCarbs" placeholder="Ej. 45" min="0" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
-                </div>
+    <!-- Alerta si falta el peso en el onboarding -->
+    <div id="basalAlertaFaltaDatos" style="display: none; text-align: center; padding: 20px 0;">
+      <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.95rem;">
+        No encontramos tu peso registrado en la ficha médica. Es necesario configurarlo para realizar el cálculo automático.
+      </p>
+      <button onclick="window.location.href='pages/onboarding.html'" class="btn">Completar Datos en Onboarding</button>
+    </div>
+  </div>
+</div>
 
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label for="inputGlucemiaActual" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Glucemia actual (mg/dL) - Opcional:</label>
-                    <input type="number" id="inputGlucemiaActual" placeholder="Ej. 180" min="40" max="600" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
-                </div>
-
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label for="inputGlucemiaObjetivo" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Glucemia objetivo (mg/dL):</label>
-                    <input type="number" id="inputGlucemiaObjetivo" value="100" placeholder="Ej. 100" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
-                </div>
-
-                <button id="btnCalcularRapidaAccion" class="btn" style="width: 100%;">Calcular Dosis de Rápida</button>
-
-                <!-- Resultado Rápida -->
-                <div id="resultadoRapidaContainer" style="display: none; margin-top: 20px; padding: 16px; background: rgba(56, 189, 248, 0.08); border: 1px solid var(--accent); border-radius: 8px; text-align: center;">
-                    <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Dosis Sugerida</span>
-                    <p id="valorDosisRapida" style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 6px 0;">0 Unidades</p>
-                    <p id="detalleCalculoRapida" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; margin-top: 8px;"></p>
-                </div>
-            </div>
-
-            <!-- Alerta si falta el ratio I:C -->
-            <div id="rapidaAlertaFaltaDatos" style="display: none; text-align: center; padding: 20px 0;">
-                <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.95rem;">
-                    ⚠️ No encontramos configurado tu <strong>Ratio I:C (g/U)</strong> en la ficha médica. Es necesario para calcular la insulina rápida.
-                </p>
-                <button onclick="window.location.href='pages/onboarding.html'" class="btn">Completar Datos en Onboarding</button>
-            </div>
-        </div>
+<!-- Modal Calculadora de Insulina Rápida -->
+<div class="modal" id="modalRapida">
+  <div class="modal-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h2>Calculadora de Insulina Rápida</h2>
+      <button id="btnCerrarModalRapida" class="btn btn-secondary" style="padding: 4px 10px;">&times;</button>
     </div>
 
-    <script src="main.js"></script>
+    <div id="rapidaContenidoNormal">
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">
+        Calcula tu dosis de insulina rápida según los carbohidratos que vas a consumir y tu Ratio I:C configurado.
+      </p>
+
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label for="inputCarbs" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Carbohidratos a consumir (gramos):</label>
+        <input type="number" id="inputCarbs" placeholder="Ej. 45" min="0" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label for="inputGlucemiaActual" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Glucemia actual (mg/dL) - Opcional:</label>
+        <input type="number" id="inputGlucemiaActual" placeholder="Ej. 180" min="40" max="600" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label for="inputGlucemiaObjetivo" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Glucemia objetivo (mg/dL):</label>
+        <input type="number" id="inputGlucemiaObjetivo" value="100" placeholder="Ej. 100" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
+      </div>
+
+      <button id="btnCalcularRapidaAccion" class="btn" style="width: 100%;">Calcular Dosis de Rápida</button>
+
+      <!-- Resultado Rápida -->
+      <div id="resultadoRapidaContainer" style="display: none; margin-top: 20px; padding: 16px; background: rgba(56, 189, 248, 0.08); border: 1px solid var(--accent); border-radius: 8px; text-align: center;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Dosis Sugerida</span>
+        <p id="valorDosisRapida" style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 6px 0;">0 Unidades</p>
+        <p id="detalleCalculoRapida" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; margin-top: 8px;"></p>
+      </div>
+    </div>
+
+    <!-- Alerta si falta el ratio I:C -->
+    <div id="rapidaAlertaFaltaDatos" style="display: none; text-align: center; padding: 20px 0;">
+      <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.95rem;">
+        No encontramos configurado tu <strong>Ratio I:C (g/U)</strong> en la ficha médica. Es necesario para calcular la insulina rápida.
+      </p>
+      <button onclick="window.location.href='pages/onboarding.html'" class="btn">Completar Datos en Onboarding</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Calculadora de Ratio I:C -->
+<div class="modal" id="modalRatioIC">
+  <div class="modal-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h2>Calculadora de Ratio I:C</h2>
+      <button id="btnCerrarModalRatioIC" class="btn btn-secondary" style="padding: 4px 10px;">&times;</button>
+    </div>
+
+    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">
+      Estima un punto de partida para tu Ratio I:C a partir de tu Dosis Total Diaria (DTD), usando la Regla del 500 — heurística estándar que usan los educadores en diabetes. Es solo una referencia orientativa.
+    </p>
+
+    <div class="form-group" style="margin-bottom: 16px;">
+      <label for="inputDTDRatio" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Dosis Total Diaria (U/día — basal + todos los bolos del día):</label>
+      <input type="number" id="inputDTDRatio" placeholder="Ej. 40" min="1" step="0.5" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
+    </div>
+
+    <button id="btnCalcularRatioICAccion" class="btn" style="width: 100%;">Calcular Ratio I:C</button>
+
+    <div id="resultadoRatioICContainer" style="display: none; margin-top: 20px;">
+      <div style="padding: 16px; background: rgba(56, 189, 248, 0.08); border: 1px solid var(--accent); border-radius: 8px; text-align: center; margin-bottom: 12px;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Ratio I:C sugerido</span>
+        <p id="valorRatioIC" style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 6px 0;">-- g/U</p>
+        <p id="detalleCalculoRatioIC" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; margin-top: 4px;"></p>
+      </div>
+
+      <div style="background: rgba(232, 162, 61, 0.08); border: 1px solid rgba(232, 162, 61, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+        <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+          Esto es un valor de referencia, no una indicación médica. Llevá este resultado a tu diabetólogo antes de aplicarlo.
+        </p>
+      </div>
+
+      <button id="btnAplicarRatioIC" class="btn btn-secondary" style="width: 100%;">Usar este valor en mi Ficha Médica</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Calculadora de FSI -->
+<div class="modal" id="modalFSI">
+  <div class="modal-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h2>Calculadora de FSI</h2>
+      <button id="btnCerrarModalFSI" class="btn btn-secondary" style="padding: 4px 10px;">&times;</button>
+    </div>
+
+    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">
+      Estima un punto de partida para tu Factor de Sensibilidad a la Insulina (FSI) a partir de tu Dosis Total Diaria (DTD), usando la Regla del 1800 (para NovoRapid). Es solo una referencia orientativa.
+    </p>
+
+    <div class="form-group" style="margin-bottom: 16px;">
+      <label for="inputDTDFSI" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Dosis Total Diaria (U/día — basal + todos los bolos del día):</label>
+      <input type="number" id="inputDTDFSI" placeholder="Ej. 40" min="1" step="0.5" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
+    </div>
+
+    <button id="btnCalcularFSIAccion" class="btn" style="width: 100%;">Calcular FSI</button>
+
+    <div id="resultadoFSIContainer" style="display: none; margin-top: 20px;">
+      <div style="padding: 16px; background: rgba(56, 189, 248, 0.08); border: 1px solid var(--accent); border-radius: 8px; text-align: center; margin-bottom: 12px;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">FSI sugerido</span>
+        <p id="valorFSI" style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 6px 0;">-- mg/dL/U</p>
+        <p id="detalleCalculoFSI" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; margin-top: 4px;"></p>
+      </div>
+
+      <div style="background: rgba(232, 162, 61, 0.08); border: 1px solid rgba(232, 162, 61, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+        <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+          Esto es un valor de referencia, no una indicación médica. Llevá este resultado a tu diabetólogo antes de aplicarlo.
+        </p>
+      </div>
+
+      <button id="btnAplicarFSI" class="btn btn-secondary" style="width: 100%;">Usar este valor en mi Ficha Médica</button>
+    </div>
+  </div>
+</div>
+
+<script src="main.js"></script>
 </body>
 </html>
