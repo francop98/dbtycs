@@ -82,6 +82,15 @@ header p {
   line-height: 1.4;
 }
 
+/* Card genérica (no clickeable) — usada por ej. en el contador de Insulina Activa */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
 /* BOTONES GLOBALES */
 .btn {
   background-color: var(--accent);
@@ -110,10 +119,10 @@ header p {
 }
 
 /* ==========================================
-   MODAL DE FICHA MÉDICA (ESTILO CLÍNICO)
+   MODAL GLOBAL (COMPATIBLE CON MAIN.JS Y CSS)
    ========================================== */
 .modal {
-  display: none;
+  display: none; /* Se oculta por defecto y JS lo pasa a flex al abrir */
   position: fixed;
   top: 0;
   left: 0;
@@ -125,13 +134,11 @@ header p {
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  opacity: 0;
-  transition: opacity 0.3s ease;
 }
 
+/* Si se usa la clase active manualmente */
 .modal.active {
-  display: flex;
-  opacity: 1;
+  display: flex !important;
 }
 
 .modal-content {
@@ -146,12 +153,18 @@ header p {
   max-height: 88vh;
   overflow-y: auto;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-  transform: translateY(10px);
-  transition: transform 0.3s ease;
+  animation: modalEntrada 0.25s ease-out forwards;
 }
 
-.modal.active .modal-content {
-  transform: translateY(0);
+@keyframes modalEntrada {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modal-content h2 {
@@ -160,7 +173,6 @@ header p {
   color: var(--text-main);
   margin-bottom: 4px;
   letter-spacing: 0.3px;
-  text-transform: uppercase;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -176,7 +188,7 @@ header p {
   box-shadow: 0 0 8px var(--accent);
 }
 
-/* Subtítulo DBTYCS debajo de FICHA MÉDICA RESUMIDA */
+/* Subtítulo DBTYCS */
 .modal-subtitle {
   font-size: 0.75rem;
   font-weight: 600;
@@ -187,6 +199,43 @@ header p {
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
   display: block;
+}
+
+/* ==========================================
+   ESTILOS PESTAÑAS Y AUTENTICACIÓN PROFESIONAL
+   ========================================== */
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+  gap: 8px;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  color: var(--text-main);
+}
+
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
 }
 
 /* Estructura clínica de ítems */
@@ -246,31 +295,8 @@ header p {
   color: #000000 !important;
 }
 
-/* ADAPTABILIDAD MÓVIL */
-@media (max-width: 600px) {
-  body {
-    padding: 12px;
-  }
-
-  .container {
-    margin: 10px auto;
-    width: 100%;
-  }
-
-  .grid {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-
-  .modal-content {
-    padding: 20px;
-    width: 95%;
-    max-height: 90vh;
-  }
-}
-
 /* ==========================================
-   REGISTRO DE COMIDAS
+   REGISTRO DE COMIDAS Y FORMULARIOS
    ========================================== */
 .section-title {
   font-size: 1rem;
@@ -458,4 +484,165 @@ header p {
   background: var(--surface);
   border: 1px dashed var(--border);
   border-radius: var(--radius);
+}
+
+/* ==========================================
+   REGISTRO DE INSULINA (faltaban estas clases)
+   ========================================== */
+.day-group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+
+.day-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.day-date {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  text-transform: capitalize;
+}
+
+.day-totals {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.total-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.total-pill.basal {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.total-pill.rapida {
+  color: #f472b6;
+  border-color: rgba(244, 114, 182, 0.4);
+  background: rgba(244, 114, 182, 0.08);
+}
+
+.total-pill.total {
+  color: var(--text-main);
+  border-color: var(--surface-hover);
+  background: var(--surface-hover);
+}
+
+.entry-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid #1b2637;
+  font-size: 0.87rem;
+}
+
+.entry-row:last-child {
+  border-bottom: none;
+}
+
+.entry-time {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  width: 48px;
+  flex-shrink: 0;
+}
+
+.entry-type-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.entry-type-badge.basal {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.entry-type-badge.rapida {
+  color: #f472b6;
+  background: rgba(244, 114, 182, 0.12);
+}
+
+.entry-units {
+  font-weight: 700;
+  color: var(--text-main);
+  flex-shrink: 0;
+}
+
+.entry-notes {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+.entry-delete:hover {
+  color: #f87171;
+}
+
+/* ADAPTABILIDAD MÓVIL */
+@media (max-width: 600px) {
+  body {
+    padding: 12px;
+  }
+
+  .container {
+    margin: 10px auto;
+    width: 100%;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .modal-content {
+    padding: 20px;
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .auth-tabs {
+    gap: 4px;
+  }
+
+  .tab-btn {
+    font-size: 0.88rem;
+    padding: 8px;
+  }
 }

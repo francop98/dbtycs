@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insulina Activa - DBTYCS</title>
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+<div class="container">
+  <header style="display: flex; justify-content: space-between; align-items: flex-start;">
+    <div>
+      <h1>⚡ Insulina Activa</h1>
+      <p>Estimación en vivo de cuánta basal y rápida seguís teniendo activa.</p>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button onclick="window.location.href='insulina.html'" class="btn btn-secondary" style="white-space: nowrap;">🧾 Registro</button>
+      <button onclick="window.location.href='../index.html'" class="btn btn-secondary" style="white-space: nowrap;">← Panel</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="form-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 8px;">
+        <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">Estado actual</span>
+        <span id="iaUltimaActualizacion" style="font-size: 0.75rem; color: var(--text-muted);"></span>
+      </div>
+
+      <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px;">
+        <div style="flex: 1; min-width: 140px; text-align: center; padding: 20px; background: rgba(244, 114, 182, 0.08); border: 1px solid rgba(244, 114, 182, 0.3); border-radius: 10px;">
+          <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Rápida activa</span>
+          <p id="iaValorRapida" style="font-size: 2rem; font-weight: 700; color: #f472b6; margin: 6px 0 0;">-- U</p>
+        </div>
+        <div style="flex: 1; min-width: 140px; text-align: center; padding: 20px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px;">
+          <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Basal activa</span>
+          <p id="iaValorBasal" style="font-size: 2rem; font-weight: 700; color: var(--accent); margin: 6px 0 0;">-- U</p>
+        </div>
+      </div>
+
+      <p id="iaDetalleModelo" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;"></p>
+
+      <div style="background: rgba(232, 162, 61, 0.08); border: 1px solid rgba(232, 162, 61, 0.3); border-radius: 8px; padding: 12px;">
+        <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+          Esto es una estimación matemática según la marca configurada en tu ficha y el horario de cada aplicación cargada en el Registro de Insulina — no es una medición real. La absorción real varía por persona, sitio de inyección, temperatura y actividad física. Se actualiza sola cada 30 segundos.
+        </p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/insulinaactiva.js"></script>
+</body>
+</html>

@@ -1,24 +1,53 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Panel de Control - DBTYCS</title>
-<link rel="stylesheet" href="styles.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Control - DBTYCS</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Librería para la exportación de PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
+
 <div class="container">
   <header style="display: flex; justify-content: space-between; align-items: flex-start; position: relative;">
     <div>
       <h1 id="saludoUsuario">Hola, Usuario</h1>
       <p>Panel de control principal de tu tratamiento.</p>
     </div>
-    <!-- Botón de Configuración (Engranaje) -->
-    <button onclick="window.location.href='pages/onboarding.html'" title="Configurar Perfil" style="background: var(--surface); border: 1px solid var(--border); color: var(--text-main); width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);">
-      ⚙️
-    </button>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <!-- Botón para Cerrar Sesión -->
+      <button id="btnCerrarSesion" title="Cerrar Sesión" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; height: 42px; padding: 0 14px; border-radius: 21px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
+        Salir
+      </button>
+
+      <!-- Botón de Configuración / Onboarding -->
+      <button onclick="window.location.href='pages/onboarding.html'" title="Configurar Perfil" style="background: var(--surface); border: 1px solid var(--border); color: var(--text-main); width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);">
+        ⚙️
+      </button>
+    </div>
   </header>
+
+  <!-- Insulina Activa: contador en vivo, no es un botón. Basal y rápida por separado, sin sumatoria total. -->
+  <div class="card" style="margin-bottom: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+      <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">⚡ Insulina Activa</span>
+      <a href="pages/insulinaactiva.html" style="font-size: 0.75rem; color: var(--accent); text-decoration: none;">Ver detalle →</a>
+    </div>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;">
+      <div style="flex: 1; min-width: 140px; text-align: center; padding: 16px; background: rgba(244, 114, 182, 0.08); border: 1px solid rgba(244, 114, 182, 0.3); border-radius: 8px;">
+        <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Rápida activa</span>
+        <p id="iaValorRapida" style="font-size: 1.8rem; font-weight: 700; color: #f472b6; margin: 4px 0 0;">-- U</p>
+      </div>
+      <div style="flex: 1; min-width: 140px; text-align: center; padding: 16px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px;">
+        <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Basal activa</span>
+        <p id="iaValorBasal" style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 4px 0 0;">-- U</p>
+      </div>
+    </div>
+    <p id="iaDetalleModelo" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px;"></p>
+    <p id="iaUltimaActualizacion" style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.75;"></p>
+  </div>
 
   <main>
     <div class="grid">
@@ -52,7 +81,7 @@
         <div class="desc">Visualizá tus métricas, promedios y tiempo en rango.</div>
       </div>
 
-      <!-- Card Calculadora (Con botones Basal, Rápida y Ratio/FSI) -->
+      <!-- Card Calculadoras -->
       <div class="link-card" id="cardCalculadora">
         <div class="title">💉 Calculadora de Dosis</div>
         <div class="desc" style="margin-bottom: 12px;">Herramientas de cálculo para tu tratamiento.</div>
@@ -65,6 +94,100 @@
       </div>
     </div>
   </main>
+</div>
+
+<!-- ==========================================
+     MODAL AUTENTICACIÓN (LOGIN / REGISTRO)
+     ========================================== -->
+<div class="modal" id="modalAuth" style="z-index: 9999; background-color: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);">
+  <div class="modal-content" style="max-width: 400px; text-align: left;">
+    
+    <!-- Pestañas -->
+    <div class="auth-tabs">
+      <button id="tabLogin" class="tab-btn active" type="button">Iniciar Sesión</button>
+      <button id="tabRegister" class="tab-btn" type="button">Crear Cuenta</button>
+    </div>
+
+    <!-- Botón Autenticación con Google -->
+    <div style="margin-bottom: 16px;">
+      <button type="button" id="btnGoogleAuth" class="btn-google" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px; background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); font-weight: 600; cursor: pointer; transition: background 0.2s;">
+        <svg width="18" height="18" viewBox="0 0 24 24">
+          <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.2 9 5 12 5z"/>
+          <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+          <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 10.8 0 12s.7 2.3 1.9 4.7l3.7-2.9z"/>
+          <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.2-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"/>
+        </svg>
+        Continuar con Google
+      </button>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+      <hr style="flex: 1; border: 0; border-top: 1px solid var(--border);">
+      <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">o con email</span>
+      <hr style="flex: 1; border: 0; border-top: 1px solid var(--border);">
+    </div>
+
+    <!-- Formulario Iniciar Sesión -->
+    <form id="formLogin" class="auth-form">
+      <h2 style="font-size: 1.4rem; color: var(--accent); margin-bottom: 4px;">Bienvenido de nuevo</h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Ingresá con tu cuenta para acceder a tus datos.</p>
+
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label for="loginEmail" style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-main);">Correo electrónico</label>
+        <input type="email" id="loginEmail" placeholder="ejemplo@correo.com" required autocomplete="email" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label for="loginPassword" style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-main);">Contraseña</label>
+        <div style="position: relative;">
+          <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password" style="width: 100%; padding: 10px 40px 10px 10px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
+          <!-- Ojo Mostrar/Ocultar Clave -->
+          <button type="button" id="btnToggleLoginPassword" title="Mostrar u ocultar contraseña" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem;">👁️</button>
+        </div>
+      </div>
+
+      <!-- Checkbox Mantener Sesión -->
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted); cursor: pointer;">
+          <input type="checkbox" id="chkRememberMe" style="accent-color: var(--accent); cursor: pointer;">
+          Mantener sesión iniciada
+        </label>
+      </div>
+
+      <p id="mensajeLoginError" style="font-size: 0.8rem; color: #f87171; display: none; margin-bottom: 12px; line-height: 1.3;"></p>
+
+      <button type="submit" id="btnAuthLogin" class="btn" style="width: 100%; padding: 12px; font-weight: 600;">Ingresar a mi Cuenta</button>
+    </form>
+
+    <!-- Formulario Crear Cuenta -->
+    <form id="formRegister" class="auth-form" style="display: none;">
+      <h2 style="font-size: 1.4rem; color: var(--accent); margin-bottom: 4px;">Crear una nueva cuenta</h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Completá tus datos para registrarte en la plataforma.</p>
+
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label for="regEmail" style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-main);">Correo electrónico</label>
+        <input type="email" id="regEmail" placeholder="ejemplo@correo.com" required autocomplete="email" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label for="regPassword" style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-main);">Contraseña</label>
+        <div style="position: relative;">
+          <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" required autocomplete="new-password" style="width: 100%; padding: 10px 40px 10px 10px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
+          <button type="button" id="btnToggleRegPassword" title="Mostrar u ocultar contraseña" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem;">👁️</button>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label for="regPasswordConfirm" style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-main);">Confirmar Contraseña</label>
+        <input type="password" id="regPasswordConfirm" placeholder="Repetir contraseña" required autocomplete="new-password" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
+      </div>
+
+      <p id="mensajeRegError" style="font-size: 0.8rem; color: #f87171; display: none; margin-bottom: 12px; line-height: 1.3;"></p>
+
+      <button type="submit" id="btnAuthRegister" class="btn" style="width: 100%; padding: 12px; font-weight: 600;">Registrarme</button>
+    </form>
+
+  </div>
 </div>
 
 <!-- Modal Ficha Médica -->
@@ -90,7 +213,7 @@
 
     <div id="basalContenidoNormal">
       <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">
-        Estimación clínica inteligente basada en tu peso corporal, nivel de actividad laboral y deporte registrado.
+        Estimación clínica inteligente basada en tu peso corporal y nivel de actividad registrado.
       </p>
 
       <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
@@ -100,7 +223,6 @@
 
       <button id="btnCalcularBasalAccion" class="btn" style="width: 100%;">Calcular Dosis Diaria</button>
 
-      <!-- Resultado -->
       <div id="resultadoBasalContainer" style="display: none; margin-top: 20px; padding: 16px; background: rgba(56, 189, 248, 0.08); border: 1px solid var(--accent); border-radius: 8px; text-align: center;">
         <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Dosis Sugerida</span>
         <p id="valorDosisBasal" style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 6px 0;">0 Unidades</p>
@@ -108,12 +230,11 @@
       </div>
     </div>
 
-    <!-- Alerta si falta el peso en el onboarding -->
     <div id="basalAlertaFaltaDatos" style="display: none; text-align: center; padding: 20px 0;">
       <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.95rem;">
-        No encontramos tu peso registrado en la ficha médica. Es necesario configurarlo para realizar el cálculo automático.
+        No encontramos tu peso registrado. Es necesario configurarlo en el onboarding para realizar el cálculo.
       </p>
-      <button onclick="window.location.href='pages/onboarding.html'" class="btn">Completar Datos en Onboarding</button>
+      <button onclick="window.location.href='pages/onboarding.html'" class="btn">Completar Datos</button>
     </div>
   </div>
 </div>
@@ -128,11 +249,11 @@
 
     <div id="rapidaContenidoNormal">
       <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">
-        Calcula tu dosis de insulina rápida según los carbohidratos que vas a consumir y tu Ratio I:C configurado.
+        Calcula tu dosis según los carbohidratos a consumir y tu Ratio I:C configurado.
       </p>
 
       <div class="form-group" style="margin-bottom: 12px;">
-        <label for="inputCarbs" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Carbohidratos a consumir (gramos):</label>
+        <label for="inputCarbs" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Carbohidratos (gramos):</label>
         <input type="number" id="inputCarbs" placeholder="Ej. 45" min="0" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
       </div>
 
@@ -146,9 +267,8 @@
         <input type="number" id="inputGlucemiaObjetivo" value="100" placeholder="Ej. 100" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
       </div>
 
-      <button id="btnCalcularRapidaAccion" class="btn" style="width: 100%;">Calcular Dosis de Rápida</button>
+      <button id="btnCalcularRapidaAccion" class="btn" style="width: 100%;">Calcular Dosis</button>
 
-      <!-- Resultado Rápida -->
       <div id="resultadoRapidaContainer" style="display: none; margin-top: 20px; padding: 16px; background: rgba(56, 189, 248, 0.08); border: 1px solid var(--accent); border-radius: 8px; text-align: center;">
         <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Dosis Sugerida</span>
         <p id="valorDosisRapida" style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin: 6px 0;">0 Unidades</p>
@@ -156,17 +276,16 @@
       </div>
     </div>
 
-    <!-- Alerta si falta el ratio I:C -->
     <div id="rapidaAlertaFaltaDatos" style="display: none; text-align: center; padding: 20px 0;">
       <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.95rem;">
-        No encontramos configurado tu <strong>Ratio I:C (g/U)</strong> en la ficha médica. Es necesario para calcular la insulina rápida.
+        No encontramos configurado tu <strong>Ratio I:C (g/U)</strong>. Es necesario para calcular la insulina rápida.
       </p>
-      <button onclick="window.location.href='pages/onboarding.html'" class="btn">Completar Datos en Onboarding</button>
+      <button onclick="window.location.href='pages/onboarding.html'" class="btn">Completar Datos</button>
     </div>
   </div>
 </div>
 
-<!-- Modal Calculadora de Ratio I:C -->
+<!-- Modal Calculadora Ratio I:C -->
 <div class="modal" id="modalRatioIC">
   <div class="modal-content">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -175,11 +294,11 @@
     </div>
 
     <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">
-      Estima un punto de partida para tu Ratio I:C a partir de tu Dosis Total Diaria (DTD), usando la Regla del 500 — heurística estándar que usan los educadores en diabetes. Es solo una referencia orientativa.
+      Estima tu Ratio I:C mediante la Regla del 500 a partir de tu Dosis Total Diaria (DTD).
     </p>
 
     <div class="form-group" style="margin-bottom: 16px;">
-      <label for="inputDTDRatio" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Dosis Total Diaria (U/día — basal + todos los bolos del día):</label>
+      <label for="inputDTDRatio" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Dosis Total Diaria (U/día):</label>
       <input type="number" id="inputDTDRatio" placeholder="Ej. 40" min="1" step="0.5" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
     </div>
 
@@ -192,18 +311,12 @@
         <p id="detalleCalculoRatioIC" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; margin-top: 4px;"></p>
       </div>
 
-      <div style="background: rgba(232, 162, 61, 0.08); border: 1px solid rgba(232, 162, 61, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
-        <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
-          Esto es un valor de referencia, no una indicación médica. Llevá este resultado a tu diabetólogo antes de aplicarlo.
-        </p>
-      </div>
-
       <button id="btnAplicarRatioIC" class="btn btn-secondary" style="width: 100%;">Usar este valor en mi Ficha Médica</button>
     </div>
   </div>
 </div>
 
-<!-- Modal Calculadora de FSI -->
+<!-- Modal Calculadora FSI -->
 <div class="modal" id="modalFSI">
   <div class="modal-content">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -212,11 +325,11 @@
     </div>
 
     <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">
-      Estima un punto de partida para tu Factor de Sensibilidad a la Insulina (FSI) a partir de tu Dosis Total Diaria (DTD), usando la Regla del 1800 (para NovoRapid). Es solo una referencia orientativa.
+      Estima tu Factor de Sensibilidad mediante la Regla del 1800 a partir de tu Dosis Total Diaria (DTD).
     </p>
 
     <div class="form-group" style="margin-bottom: 16px;">
-      <label for="inputDTDFSI" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Dosis Total Diaria (U/día — basal + todos los bolos del día):</label>
+      <label for="inputDTDFSI" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Dosis Total Diaria (U/día):</label>
       <input type="number" id="inputDTDFSI" placeholder="Ej. 40" min="1" step="0.5" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background-color: rgba(255, 255, 255, 0.05); color: var(--text-main);">
     </div>
 
@@ -229,17 +342,16 @@
         <p id="detalleCalculoFSI" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; margin-top: 4px;"></p>
       </div>
 
-      <div style="background: rgba(232, 162, 61, 0.08); border: 1px solid rgba(232, 162, 61, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
-        <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
-          Esto es un valor de referencia, no una indicación médica. Llevá este resultado a tu diabetólogo antes de aplicarlo.
-        </p>
-      </div>
-
       <button id="btnAplicarFSI" class="btn btn-secondary" style="width: 100%;">Usar este valor en mi Ficha Médica</button>
     </div>
   </div>
 </div>
 
-<script src="main.js"></script>
+<!-- Insulina Activa: cálculo (no es un módulo, se ejecuta como script clásico) -->
+<script src="js/insulinaactiva.js"></script>
+
+<!-- Script Principal como Módulo ESM -->
+<script type="module" src="main.js"></script>
+
 </body>
 </html>

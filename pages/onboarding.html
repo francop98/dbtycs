@@ -204,8 +204,8 @@
         </div>
     </div>
 
-    <!-- Únicamente dejamos el script de comportamiento del botón que interactúa con tu onboarding.js existente -->
-    <script src="../js/onboarding.js"></script>
+    <!-- IMPORTANTE: type="module" es obligatorio porque onboarding.js usa import de Firebase -->
+    <script type="module" src="../js/onboarding.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const btnInicio = document.getElementById("btnInicio");
