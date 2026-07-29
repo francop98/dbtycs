@@ -9,7 +9,8 @@ import {
   signInWithPopup,
   setPersistence,
   browserLocalPersistence,
-  browserSessionPersistence
+  browserSessionPersistence,
+  updateProfile
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 // ==========================================
@@ -42,6 +43,7 @@ const tabRegister = document.getElementById("tabRegister");
 const loginEmail = document.getElementById("loginEmail");
 const loginPassword = document.getElementById("loginPassword");
 const regEmail = document.getElementById("regEmail");
+const regUsername = document.getElementById("regUsername");
 const regPassword = document.getElementById("regPassword");
 const regPasswordConfirm = document.getElementById("regPasswordConfirm");
 
@@ -54,6 +56,7 @@ const mensajeLoginError = document.getElementById("mensajeLoginError");
 const mensajeRegError = document.getElementById("mensajeRegError");
 const saludoUsuario = document.getElementById("saludoUsuario");
 const btnCerrarSesion = document.getElementById("btnCerrarSesion");
+const btnAbrirAuth = document.getElementById("btnAbrirAuth");
 
 // Modales Calculadoras y Ficha
 const modalFicha = document.getElementById("modalFicha");
@@ -161,9 +164,15 @@ if (formRegister) {
     e.preventDefault();
     ocultarError(mensajeRegError);
 
+    const username = regUsername ? regUsername.value.trim() : '';
     const email = regEmail.value.trim();
     const password = regPassword.value;
     const passwordConfirm = regPasswordConfirm.value;
+
+    if (!username) {
+      mostrarError(mensajeRegError, "Ingresá un nombre de usuario.");
+      return;
+    }
 
     if (password !== passwordConfirm) {
       mostrarError(mensajeRegError, "Las contraseñas no coinciden.");
@@ -171,9 +180,11 @@ if (formRegister) {
     }
 
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      if (modalAuth) modalAuth.style.display = "none";
-      formRegister.reset();
+      const credencial = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(credencial.user, { displayName: username });
+
+      // Cuenta creada -> seguimos directo al onboarding para completar el perfil de salud
+      window.location.href = 'pages/onboarding.html';
     } catch (error) {
       mostrarError(mensajeRegError, obtenerMensajeError(error.code));
     }
@@ -193,18 +204,31 @@ if (btnCerrarSesion) {
 // Estado de perfil en memoria — lo llenamos cuando cargamos el perfil (más abajo)
 let perfil = null;
 
+// Botón opcional para abrir login/registro manualmente
+if (btnAbrirAuth) {
+  btnAbrirAuth.addEventListener("click", () => {
+    if (modalAuth) modalAuth.style.display = "flex";
+  });
+}
+
 // Observer del estado de Autenticación
 onAuthStateChanged(auth, (user) => {
   if (user) {
     if (modalAuth) modalAuth.style.display = "none";
-    if (saludoUsuario && !perfil?.nombre) {
-      saludoUsuario.textContent = `Hola, ${user.displayName || user.email.split('@')[0]}`;
+    if (saludoUsuario) {
+      // Con sesión iniciada, el saludo usa el nombre de usuario (Firebase), no el de la ficha médica
+      const nombreMostrar = user.displayName || user.email.split('@')[0];
+      saludoUsuario.textContent = `Hola, ${nombreMostrar}`;
     }
     if (btnCerrarSesion) btnCerrarSesion.style.display = "block";
+    if (btnAbrirAuth) btnAbrirAuth.style.display = "none";
   } else {
-    if (modalAuth) modalAuth.style.display = "flex";
-    if (saludoUsuario && !perfil?.nombre) saludoUsuario.textContent = "Hola, Usuario";
+    // Sin sesión (modo local): el saludo usa el nombre cargado en el onboarding, si existe
+    if (saludoUsuario) {
+      saludoUsuario.textContent = (perfil && perfil.nombre) ? `Hola, ${perfil.nombre.split(' ')[0]}` : "Hola, Usuario";
+    }
     if (btnCerrarSesion) btnCerrarSesion.style.display = "none";
+    if (btnAbrirAuth) btnAbrirAuth.style.display = "inline-flex";
   }
 });
 
@@ -627,13 +651,8 @@ if (btnAplicarFSI) {
 const fichaDatos = document.getElementById('fichaDatos');
 const btnExportarPDF = document.getElementById('btnExportarPDF');
 
-function renderFichaMedica() {
-  if (!fichaDatos) return;
-
-  if (!perfil) {
-    fichaDatos.innerHTML = '<p>No se encontraron datos registrados. Completa la configuración de perfil primero.</p>';
-    return;
-  }
+function obtenerItemsFichaMedica() {
+  if (!perfil) return null;
 
   const fechaNac = perfil.fechaNacimiento || perfil.fechaNac || perfil.nacimiento;
   const edadCalculada = calcularEdad(fechaNac);
@@ -646,7 +665,7 @@ function renderFichaMedica() {
     muy_activo: 'Muy activo'
   };
 
-  const items = [
+  return [
     { label: 'Nombre Completo', val: perfil.nombre || 'No especificado' },
     { label: 'Edad', val: textoEdad },
     { label: 'Tipo de Diabetes', val: perfil.tipoDiabetes || 'No especificado' },
@@ -659,6 +678,16 @@ function renderFichaMedica() {
     { label: 'Ratio Carb', val: perfil.ratioIC ? `${perfil.ratioIC} g/U` : 'No especificado' },
     { label: 'Factor ISF', val: perfil.factorCorreccion ? `${perfil.factorCorreccion} mg/dL/U` : 'No especificado' }
   ];
+}
+
+function renderFichaMedica() {
+  if (!fichaDatos) return;
+
+  const items = obtenerItemsFichaMedica();
+  if (!items) {
+    fichaDatos.innerHTML = '<p>No se encontraron datos registrados. Completa la configuración de perfil primero.</p>';
+    return;
+  }
 
   let html = '<div class="summary-list">';
   items.forEach(item => {
@@ -676,32 +705,94 @@ function renderFichaMedica() {
 
 if (btnExportarPDF) {
   btnExportarPDF.addEventListener('click', () => {
-    const contenido = document.getElementById('contenidoFichaMedica');
-    if (!contenido) return;
-
-    const nombreUsuario = (perfil && perfil.nombre) ? perfil.nombre : 'Paciente';
-
-    const opt = {
-      margin: [10, 10, 10, 10],
-      filename: `Ficha_Medica_${nombreUsuario.trim().replace(/\s+/g, '_')}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        letterRendering: true,
-        backgroundColor: '#182232'
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    const accionesModal = contenido.querySelector('.modal-actions');
-    if (accionesModal) accionesModal.style.display = 'none';
-
-    html2pdf().set(opt).from(contenido).save().then(() => {
-      if (accionesModal) accionesModal.style.display = 'flex';
-    }).catch(err => {
-      console.error('Error generando PDF:', err);
-      if (accionesModal) accionesModal.style.display = 'flex';
-    });
+    generarPDFFichaMedica();
   });
+}
+
+function generarPDFFichaMedica() {
+  if (typeof jspdf === 'undefined') {
+    alert('No se pudo cargar la librería de generación de PDF. Verificá tu conexión a internet.');
+    return;
+  }
+
+  const items = obtenerItemsFichaMedica();
+  if (!items) {
+    alert('No hay datos de perfil cargados todavía. Completá el onboarding primero.');
+    return;
+  }
+
+  const { jsPDF } = jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginX = 20;
+  const nombreUsuario = (perfil && perfil.nombre) ? perfil.nombre : 'Paciente';
+
+  // --- Encabezado con color de marca ---
+  doc.setFillColor(2, 132, 199); // --accent-hover
+  doc.rect(0, 0, pageWidth, 32, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text('Ficha Médica Resumida', marginX, 16);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text('DBTYCS · Diabetes Tipo 1 y Control de Salud', marginX, 24);
+
+  // --- Nombre y fecha de generación ---
+  let y = 46;
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text(nombreUsuario, marginX, y);
+
+  const fechaGeneracion = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Generado el ${fechaGeneracion}`, pageWidth - marginX, y, { align: 'right' });
+
+  y += 6;
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.4);
+  doc.line(marginX, y, pageWidth - marginX, y);
+  y += 12;
+
+  // --- Listado de datos ---
+  doc.setFontSize(10.5);
+  items.forEach((item) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(71, 85, 105);
+    doc.text(item.label, marginX, y);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    doc.text(String(item.val), pageWidth - marginX, y, { align: 'right' });
+
+    y += 6;
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.2);
+    doc.line(marginX, y, pageWidth - marginX, y);
+    y += 9;
+  });
+
+  // --- Pie de página / disclaimer ---
+  const footerY = pageHeight - 22;
+  doc.setDrawColor(226, 232, 240);
+  doc.line(marginX, footerY - 6, pageWidth - marginX, footerY - 6);
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(148, 163, 184);
+  doc.text(
+    'Este documento es un resumen autoreportado por el paciente, generado por DBTYCS. No reemplaza la evaluación de un profesional de la salud.',
+    marginX,
+    footerY,
+    { maxWidth: pageWidth - marginX * 2 }
+  );
+
+  doc.save(`Ficha_Medica_${nombreUsuario.trim().replace(/\s+/g, '_')}.pdf`);
 }
