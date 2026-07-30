@@ -3,7 +3,13 @@
 // Guarda cada aplicación (basal o rápida) en localStorage['dbtycs_insulina']
 // como un array plano de registros. Carga 100% manual e independiente del
 // Registro de Comidas — cada aplicación se carga una sola vez, acá.
+//
+// Ahora también sincroniza con Firestore cuando hay sesión iniciada.
 // ============================================================================
+
+import { auth } from './firebase-init.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { guardarDocEnNube, eliminarDocDeNube, sincronizarColeccion, estaLogueado } from './firestore-sync.js';
 
 const INSULINA_KEY = 'dbtycs_insulina';
 
@@ -18,6 +24,16 @@ document.addEventListener('DOMContentLoaded', () => {
       guardarNuevaAplicacion();
     });
   }
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const bajoDatos = await sincronizarColeccion('insulina', INSULINA_KEY, guardarAplicaciones);
+      if (bajoDatos) {
+        renderHistorialInsulina();
+        if (typeof actualizarWidgetInsulinaActiva === 'function') actualizarWidgetInsulinaActiva();
+      }
+    }
+  });
 });
 
 // --- Utilidades ---
@@ -73,19 +89,23 @@ function guardarNuevaAplicacion() {
   const lista = cargarAplicaciones();
   lista.push(aplicacion);
   guardarAplicaciones(lista);
+  if (estaLogueado()) guardarDocEnNube('insulina', aplicacion);
 
   document.getElementById('formNuevaInsulina').reset();
   document.getElementById('radioTipoBasal').checked = true;
   precargarFechaHoraInsulina();
 
   renderHistorialInsulina();
+  if (typeof actualizarWidgetInsulinaActiva === 'function') actualizarWidgetInsulinaActiva();
 }
 
 function eliminarAplicacion(id) {
   if (!confirm('¿Eliminar esta aplicación? No se puede deshacer.')) return;
   const lista = cargarAplicaciones().filter((a) => a.id !== id);
   guardarAplicaciones(lista);
+  if (estaLogueado()) eliminarDocDeNube('insulina', id);
   renderHistorialInsulina();
+  if (typeof actualizarWidgetInsulinaActiva === 'function') actualizarWidgetInsulinaActiva();
 }
 
 // --- Agrupación y render ---
@@ -167,3 +187,8 @@ function renderHistorialInsulina() {
     `;
   }).join('');
 }
+
+// Los módulos ES no exponen funciones al scope global automáticamente,
+// pero el HTML generado usa onclick="eliminarAplicacion(...)" — hace
+// falta colgarla de window.
+window.eliminarAplicacion = eliminarAplicacion;

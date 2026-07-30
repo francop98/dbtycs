@@ -4,11 +4,21 @@
 // Cada evento es la unidad base que va a alimentar el motor de análisis que
 // sugiere ajustes de Ratio I:C y FSI (agrupando por categoría de comida y/o
 // momento del día). Acá solo nos encargamos de la carga y edición de datos.
+//
+// Ahora también sincroniza con Firestore cuando hay sesión iniciada.
 // ============================================================================
+
+import { auth } from './firebase-init.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { guardarDocEnNube, eliminarDocDeNube, sincronizarColeccion, estaLogueado } from './firestore-sync.js';
 
 const EVENTOS_KEY = 'dbtycs_eventos';
 const USDA_API_KEY = 'VGps3fGihKwWQ2UYCgjoNQXHZDrXcBaOF3R91BCe';
 const USDA_SEARCH_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
+
+// TODO Franco: reemplazá esta URL por la que te da Vercel al desplegar
+// dbtycs-ai-proxy, agregando /api/analizar-comida al final.
+const PROXY_IA_URL = 'https://TU-PROYECTO.vercel.app/api/analizar-comida';
 
 const ETIQUETAS_MOMENTO = {
   desayuno: 'Desayuno',
@@ -21,12 +31,14 @@ const ETIQUETAS_MOMENTO = {
 
 let carbsPor100gSeleccionado = null;
 let debounceTimeoutBusqueda = null;
+let ultimoResultadoIA = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   precargarFechaHora();
   sugerirMomentoDelDia();
   renderTodo();
   inicializarBusquedaUSDA();
+  inicializarAnalisisIA();
 
   const form = document.getElementById('formNuevoEvento');
   if (form) {
@@ -35,6 +47,13 @@ document.addEventListener('DOMContentLoaded', () => {
       guardarNuevoEvento();
     });
   }
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const bajoDatos = await sincronizarColeccion('eventos', EVENTOS_KEY, guardarEventos);
+      if (bajoDatos) renderTodo();
+    }
+  });
 });
 
 // --- Utilidades ---
@@ -355,6 +374,7 @@ function guardarNuevoEvento() {
   const momentoDia = document.getElementById('selectMomentoDia').value;
   const fechaHora = document.getElementById('inputFechaHora').value;
   const carbohidratos = parseFloat(document.getElementById('inputCarbohidratos').value);
+  const kcal = parseFloat(document.getElementById('inputKcal').value);
   const insulinaAplicada = parseFloat(document.getElementById('inputInsulinaAplicada').value);
   const glucosaPre = parseFloat(document.getElementById('inputGlucosaPre').value);
   const notas = document.getElementById('inputNotas').value.trim();
@@ -371,6 +391,7 @@ function guardarNuevoEvento() {
     momentoDia,
     fechaHora,
     carbohidratos,
+    kcal: isNaN(kcal) ? null : kcal,
     insulinaAplicada,
     glucosaPre,
     glucosaPost1h: null,
@@ -384,12 +405,14 @@ function guardarNuevoEvento() {
   const eventos = cargarEventos();
   eventos.push(evento);
   guardarEventos(eventos);
+  if (estaLogueado()) guardarDocEnNube('eventos', evento);
 
   document.getElementById('formNuevoEvento').reset();
   precargarFechaHora();
   sugerirMomentoDelDia();
   carbsPor100gSeleccionado = null;
   ocultarCamposPorcion();
+  ocultarResultadoIA();
 
   renderTodo();
 }
@@ -408,6 +431,7 @@ function guardarControl(id, campo, valor) {
   evento.actualizadoEn = new Date().toISOString();
 
   guardarEventos(eventos);
+  if (estaLogueado()) guardarDocEnNube('eventos', evento);
   renderTodo();
 }
 
@@ -415,10 +439,103 @@ function eliminarEvento(id) {
   if (!confirm('¿Eliminar este registro? No se puede deshacer.')) return;
   const eventos = cargarEventos().filter((e) => e.id !== id);
   guardarEventos(eventos);
+  if (estaLogueado()) eliminarDocDeNube('eventos', id);
   renderTodo();
 }
 
-// --- Render ---
+// --- Análisis con IA (vía proxy propio en Vercel) ---
+
+function inicializarAnalisisIA() {
+  const btnAnalizar = document.getElementById('btnAnalizarIA');
+  const btnUsar = document.getElementById('btnUsarResultadoIA');
+
+  if (btnAnalizar) {
+    btnAnalizar.addEventListener('click', analizarConIA);
+  }
+  if (btnUsar) {
+    btnUsar.addEventListener('click', aplicarResultadoIA);
+  }
+}
+
+async function analizarConIA() {
+  const textarea = document.getElementById('inputDescripcionIA');
+  const btnAnalizar = document.getElementById('btnAnalizarIA');
+  const descripcion = textarea ? textarea.value.trim() : '';
+
+  if (!descripcion) {
+    alert('Describí qué comiste antes de analizar.');
+    return;
+  }
+
+  if (PROXY_IA_URL.includes('TU-PROYECTO')) {
+    alert('Todavía no configuraste la URL de tu proxy de IA. Revisá la constante PROXY_IA_URL en registro.js.');
+    return;
+  }
+
+  btnAnalizar.disabled = true;
+  btnAnalizar.textContent = 'Analizando...';
+  ocultarResultadoIA();
+
+  try {
+    const resp = await fetch(PROXY_IA_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ descripcion }),
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok || data.error) {
+      console.error('Error del proxy de IA:', data);
+      alert('No se pudo analizar la comida. Revisá que el proxy esté desplegado y la API key configurada.');
+      return;
+    }
+
+    ultimoResultadoIA = data;
+    renderResultadoIA(data);
+  } catch (e) {
+    console.error('Error llamando al proxy de IA:', e);
+    alert('No se pudo conectar con el proxy de IA. Verificá la URL y tu conexión a internet.');
+  } finally {
+    btnAnalizar.disabled = false;
+    btnAnalizar.textContent = 'Analizar con IA';
+  }
+}
+
+function renderResultadoIA(resultado) {
+  const contenedor = document.getElementById('resultadoAnalisisIA');
+  if (!contenedor) return;
+
+  document.getElementById('iaCategoria').textContent = resultado.categoria || '—';
+  document.getElementById('iaCarbs').textContent = `${resultado.carbohidratos_g ?? '--'} g`;
+  document.getElementById('iaKcal').textContent = `${resultado.kcal ?? '--'} kcal`;
+  document.getElementById('iaConfianza').textContent = resultado.confianza || '—';
+  document.getElementById('iaNotas').textContent = resultado.notas || '';
+
+  contenedor.style.display = 'block';
+}
+
+function ocultarResultadoIA() {
+  const contenedor = document.getElementById('resultadoAnalisisIA');
+  if (contenedor) contenedor.style.display = 'none';
+  ultimoResultadoIA = null;
+}
+
+function aplicarResultadoIA() {
+  if (!ultimoResultadoIA) return;
+
+  const inputCategoria = document.getElementById('inputCategoriaComida');
+  const inputCarbs = document.getElementById('inputCarbohidratos');
+  const inputKcal = document.getElementById('inputKcal');
+
+  if (inputCategoria && ultimoResultadoIA.categoria) inputCategoria.value = ultimoResultadoIA.categoria;
+  if (inputCarbs && typeof ultimoResultadoIA.carbohidratos_g === 'number') inputCarbs.value = ultimoResultadoIA.carbohidratos_g;
+  if (inputKcal && typeof ultimoResultadoIA.kcal === 'number') inputKcal.value = ultimoResultadoIA.kcal;
+
+  // Al venir de la IA (estimación), invalidamos cualquier selección previa de USDA/OFF
+  carbsPor100gSeleccionado = null;
+  ocultarCamposPorcion();
+}
 
 function estaCompleto(evento) {
   return evento.glucosaPost1h !== null && evento.glucosaPost2h !== null && evento.glucosaPost3h !== null;
@@ -473,6 +590,7 @@ function renderTarjetaEvento(evento, mostrarAcciones) {
       </div>
       <div class="event-card-stats">
         <span>Carbs: <strong>${evento.carbohidratos} g</strong></span>
+        ${evento.kcal ? `<span>Kcal: <strong>${evento.kcal}</strong></span>` : ''}
         <span>Insulina: <strong>${evento.insulinaAplicada} U</strong></span>
       </div>
       <div class="glucose-points">
@@ -512,3 +630,9 @@ function renderTodo() {
       : '<div class="empty-state">Todavía no tenés registros completos. Van a aparecer acá una vez que tengan los 3 controles de glucosa cargados.</div>';
   }
 }
+
+// Los módulos ES no exponen funciones al scope global automáticamente,
+// pero el HTML generado usa onclick="eliminarEvento(...)" y
+// onchange="guardarControl(...)" — hace falta colgarlas de window.
+window.eliminarEvento = eliminarEvento;
+window.guardarControl = guardarControl;

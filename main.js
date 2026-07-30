@@ -1,6 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
-  getAuth, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
@@ -12,21 +10,12 @@ import {
   browserSessionPersistence,
   updateProfile
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { auth } from "./js/firebase-init.js";
+import { guardarPerfilEnNube, sincronizarPerfil } from "./js/firestore-sync.js";
 
 // ==========================================
-// 1. CONFIGURACIÓN E INICIALIZACIÓN FIREBASE
+// 1. AUTENTICACIÓN (usa la instancia central de Firebase)
 // ==========================================
-const firebaseConfig = {
-  apiKey: "AIzaSyC7R3tUNl598ikgC8pzSfjJgAu718UZox4",
-  authDomain: "dbtycs.firebaseapp.com",
-  projectId: "dbtycs",
-  storageBucket: "dbtycs.firebasestorage.app",
-  messagingSenderId: "386450176653",
-  appId: "1:386450176653:web:ac7d2273fb9af4211800c4"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
 // Provider de Google
 const googleProvider = new GoogleAuthProvider();
@@ -212,7 +201,7 @@ if (btnAbrirAuth) {
 }
 
 // Observer del estado de Autenticación
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (user) {
     if (modalAuth) modalAuth.style.display = "none";
     if (saludoUsuario) {
@@ -222,6 +211,15 @@ onAuthStateChanged(auth, (user) => {
     }
     if (btnCerrarSesion) btnCerrarSesion.style.display = "block";
     if (btnAbrirAuth) btnAbrirAuth.style.display = "none";
+
+    // Bajamos (o subimos, si es la primera vez) el perfil de Firestore.
+    // Actualiza la variable `perfil` que usan las calculadoras y la ficha médica.
+    try {
+      const perfilSincronizado = await sincronizarPerfil();
+      if (perfilSincronizado) perfil = perfilSincronizado;
+    } catch (e) {
+      console.error('No se pudo sincronizar el perfil con Firestore:', e);
+    }
   } else {
     // Sin sesión (modo local): el saludo usa el nombre cargado en el onboarding, si existe
     if (saludoUsuario) {
@@ -585,6 +583,7 @@ if (btnAplicarRatioIC) {
 
     localStorage.setItem('dbtycs_perfil', JSON.stringify(perfilActual));
     perfil = perfilActual;
+    if (auth.currentUser) guardarPerfilEnNube(perfilActual);
 
     alert('Listo, se actualizó tu Ratio I:C en la ficha médica.');
     cerrarModal(modalRatioIC);
@@ -641,6 +640,7 @@ if (btnAplicarFSI) {
 
     localStorage.setItem('dbtycs_perfil', JSON.stringify(perfilActual));
     perfil = perfilActual;
+    if (auth.currentUser) guardarPerfilEnNube(perfilActual);
 
     alert('Listo, se actualizó tu FSI en la ficha médica.');
     cerrarModal(modalFSI);
