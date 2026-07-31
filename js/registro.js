@@ -11,6 +11,7 @@
 import { auth } from './firebase-init.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { guardarDocEnNube, eliminarDocDeNube, sincronizarColeccion, estaLogueado } from './firestore-sync.js';
+import { buscarEnRecetario, registrarUsoOCrear } from './recetario.js';
 
 const EVENTOS_KEY = 'dbtycs_eventos';
 const USDA_API_KEY = 'VGps3fGihKwWQ2UYCgjoNQXHZDrXcBaOF3R91BCe';
@@ -143,19 +144,34 @@ async function buscarEnBasesDeDatos(termino) {
   if (!resultadosDiv) return;
 
   resultadosDiv.style.display = 'block';
-  resultadosDiv.innerHTML = '<div style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">Buscando en USDA y Open Food Facts...</div>';
+
+  // El recetario es local e instantáneo: lo mostramos primero mientras esperamos las APIs externas
+  const coincidenciasRecetario = buscarEnRecetario(termino).map(({ receta }) => ({
+    tipo: 'recetario',
+    description: receta.nombre,
+    carbohidratosAbsolutos: receta.carbohidratos,
+    source: receta.origen === 'personal' ? 'Tu recetario' : 'Recetario · comida típica',
+  }));
+
+  renderResultadosBusqueda(coincidenciasRecetario);
+
+  if (coincidenciasRecetario.length > 0) {
+    resultadosDiv.insertAdjacentHTML('beforeend', '<div style="padding: 8px 12px; font-size: 0.78rem; color: var(--text-muted);">Buscando también en USDA y Open Food Facts...</div>');
+  } else {
+    resultadosDiv.innerHTML = '<div style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">Buscando en USDA y Open Food Facts...</div>';
+  }
 
   const [usda, off] = await Promise.allSettled([
     buscarEnUSDA(termino),
     buscarEnOpenFoodFacts(termino),
   ]);
 
-  const resultados = [
+  const resultadosExternos = [
     ...(off.status === 'fulfilled' ? off.value : []),   // priorizamos Open Food Facts: mejor cobertura de productos argentinos
     ...(usda.status === 'fulfilled' ? usda.value : []),
-  ];
+  ].map((item) => ({ ...item, tipo: 'externo' }));
 
-  renderResultadosBusqueda(resultados);
+  renderResultadosBusqueda([...coincidenciasRecetario, ...resultadosExternos]);
 }
 
 async function buscarEnUSDA(termino) {
@@ -207,20 +223,26 @@ function renderResultadosBusqueda(resultados) {
   if (!resultadosDiv) return;
 
   if (!resultados.length) {
-    resultadosDiv.innerHTML = '<div style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">Sin resultados con datos de carbohidratos en USDA ni Open Food Facts. Podés cargar el nombre y los gramos a mano.</div>';
+    resultadosDiv.innerHTML = '<div style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">Sin resultados. Podés cargar el nombre y los gramos de carbohidratos a mano — queda guardado en tu recetario para la próxima.</div>';
     return;
   }
 
-  resultadosDiv.innerHTML = resultados.map((item, i) => `
-    <div class="resultado-busqueda" data-index="${i}" style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem;">
-      <div style="color: var(--text-main); font-weight: 600;">${item.description}</div>
-      <div style="color: var(--text-muted); font-size: 0.78rem;">${item.carbs.toFixed(1)} g de carbohidratos por 100g · <span style="color: var(--accent);">${item.source}</span></div>
-    </div>
-  `).join('');
+  resultadosDiv.innerHTML = resultados.map((item, i) => {
+    const esRecetario = item.tipo === 'recetario';
+    const detalle = esRecetario
+      ? `${item.carbohidratosAbsolutos} g de carbohidratos (porción típica)`
+      : `${item.carbs.toFixed(1)} g de carbohidratos por 100g`;
+    return `
+      <div class="resultado-busqueda" data-index="${i}" style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem; ${esRecetario ? 'background: rgba(56, 189, 248, 0.05);' : ''}">
+        <div style="color: var(--text-main); font-weight: 600;">${esRecetario ? '📖 ' : ''}${item.description}</div>
+        <div style="color: var(--text-muted); font-size: 0.78rem;">${detalle} · <span style="color: var(--accent);">${item.source}</span></div>
+      </div>
+    `;
+  }).join('');
 
   resultadosDiv.querySelectorAll('.resultado-busqueda').forEach((el, i) => {
-    el.addEventListener('mouseenter', () => { el.style.background = 'rgba(56, 189, 248, 0.08)'; });
-    el.addEventListener('mouseleave', () => { el.style.background = 'transparent'; });
+    el.addEventListener('mouseenter', () => { el.style.background = 'rgba(56, 189, 248, 0.12)'; });
+    el.addEventListener('mouseleave', () => { el.style.background = resultados[i].tipo === 'recetario' ? 'rgba(56, 189, 248, 0.05)' : 'transparent'; });
     el.addEventListener('click', () => seleccionarAlimento(resultados[i]));
   });
 }
@@ -228,15 +250,24 @@ function renderResultadosBusqueda(resultados) {
 function seleccionarAlimento(item) {
   const input = document.getElementById('inputCategoriaComida');
   const resultadosDiv = document.getElementById('resultadosBusquedaComida');
+  const inputCarbs = document.getElementById('inputCarbohidratos');
 
   if (input) input.value = item.description;
-  carbsPor100gSeleccionado = item.carbs;
 
   if (resultadosDiv) {
     resultadosDiv.style.display = 'none';
     resultadosDiv.innerHTML = '';
   }
 
+  if (item.tipo === 'recetario') {
+    // Valor absoluto de tu recetario: se carga directo, sin pedir gramos de porción
+    carbsPor100gSeleccionado = null;
+    ocultarCamposPorcion();
+    if (inputCarbs) inputCarbs.value = item.carbohidratosAbsolutos;
+    return;
+  }
+
+  carbsPor100gSeleccionado = item.carbs;
   mostrarCamposPorcion(item.carbs, item.source);
 }
 
@@ -406,6 +437,9 @@ function guardarNuevoEvento() {
   eventos.push(evento);
   guardarEventos(eventos);
   if (estaLogueado()) guardarDocEnNube('eventos', evento);
+
+  // Recetario: si ya existe algo parecido, solo suma un uso; si no, lo agrega como receta nueva
+  registrarUsoOCrear(categoria, carbohidratos);
 
   document.getElementById('formNuevoEvento').reset();
   precargarFechaHora();

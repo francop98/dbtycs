@@ -615,6 +615,31 @@ header p {
   color: #f87171;
 }
 
+/* Tendencia de Insulina Activa (subiendo/bajando/estable) */
+.ia-tendencia {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.ia-tendencia-subiendo {
+  color: #fb923c;
+  background: rgba(251, 146, 60, 0.12);
+}
+
+.ia-tendencia-bajando {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+}
+
+.ia-tendencia-estable {
+  color: var(--text-muted);
+  background: rgba(148, 163, 184, 0.1);
+}
+
 /* ADAPTABILIDAD MÓVIL */
 @media (max-width: 600px) {
   body {
