@@ -139,13 +139,13 @@ function agruparPorDia(lista) {
 
 function renderFilaAplicacion(a) {
   return `
-    <div class="entry-row">
-      <span class="entry-time">${formatearHora(a.fechaHora)}</span>
-      <span class="entry-type-badge ${a.tipo}">${a.tipo === 'basal' ? 'Basal' : 'Rápida'}</span>
-      <span class="entry-units">${a.unidades} U</span>
-      <span class="entry-notes">${a.notas || ''}</span>
-      <button class="entry-delete" onclick="eliminarAplicacion('${a.id}')" title="Eliminar">✕</button>
-    </div>
+    <tr>
+      <td class="ins-td-hora">${formatearHora(a.fechaHora)}</td>
+      <td><span class="entry-type-badge ${a.tipo}">${a.tipo === 'basal' ? 'Basal' : 'Rápida'}</span></td>
+      <td class="ins-td-unidades">${a.unidades} U</td>
+      <td class="ins-td-notas">${a.notas || ''}</td>
+      <td class="ins-td-accion"><button class="entry-delete" onclick="eliminarAplicacion('${a.id}')" title="Eliminar">✕</button></td>
+    </tr>
   `;
 }
 
@@ -171,18 +171,20 @@ function renderHistorialInsulina() {
     const totalCombinado = totalBasal + totalRapida;
 
     return `
-      <div class="day-group">
-        <div class="day-group-header">
+      <div class="ins-day">
+        <div class="ins-day-header">
           <span class="day-date">${formatearEncabezadoDia(clave)}</span>
           <div class="day-totals">
-            <span class="total-pill basal">Basal: ${totalBasal} U</span>
-            <span class="total-pill rapida">Rápida: ${totalRapida} U</span>
-            <span class="total-pill total">Total: ${totalCombinado} U</span>
+            <span class="total-pill basal">${totalBasal} U</span>
+            <span class="total-pill rapida">${totalRapida} U</span>
+            <span class="total-pill total">${totalCombinado} U</span>
           </div>
         </div>
-        <div class="day-entries">
-          ${aplicacionesDelDia.map(renderFilaAplicacion).join('')}
-        </div>
+        <table class="ins-tabla">
+          <tbody>
+            ${aplicacionesDelDia.map(renderFilaAplicacion).join('')}
+          </tbody>
+        </table>
       </div>
     `;
   }).join('');

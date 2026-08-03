@@ -11,7 +11,7 @@
 import { auth } from './firebase-init.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { guardarDocEnNube, eliminarDocDeNube, sincronizarColeccion, estaLogueado } from './firestore-sync.js';
-import { buscarEnRecetario, registrarUsoOCrear } from './recetario.js';
+import { buscarEnRecetario, registrarUsoOCrear, CATEGORIAS_COMIDA } from './recetario.js';
 
 const EVENTOS_KEY = 'dbtycs_eventos';
 const USDA_API_KEY = 'VGps3fGihKwWQ2UYCgjoNQXHZDrXcBaOF3R91BCe';
@@ -37,6 +37,7 @@ let ultimoResultadoIA = null;
 document.addEventListener('DOMContentLoaded', () => {
   precargarFechaHora();
   sugerirMomentoDelDia();
+  poblarSelectCategorias();
   renderTodo();
   inicializarBusquedaUSDA();
   inicializarAnalisisIA();
@@ -83,6 +84,12 @@ function precargarFechaHora() {
   const ahora = new Date();
   ahora.setMinutes(ahora.getMinutes() - ahora.getTimezoneOffset());
   input.value = ahora.toISOString().slice(0, 16);
+}
+
+function poblarSelectCategorias() {
+  const select = document.getElementById('selectCategoriaComida');
+  if (!select) return;
+  select.innerHTML = CATEGORIAS_COMIDA.map((cat) => `<option value="${cat}">${cat}</option>`).join('');
 }
 
 function sugerirMomentoDelDia() {
@@ -150,6 +157,8 @@ async function buscarEnBasesDeDatos(termino) {
     tipo: 'recetario',
     description: receta.nombre,
     carbohidratosAbsolutos: receta.carbohidratos,
+    categoria: receta.categoria,
+    cantidad: receta.cantidad,
     source: receta.origen === 'personal' ? 'Tu recetario' : 'Recetario · comida típica',
   }));
 
@@ -251,6 +260,8 @@ function seleccionarAlimento(item) {
   const input = document.getElementById('inputCategoriaComida');
   const resultadosDiv = document.getElementById('resultadosBusquedaComida');
   const inputCarbs = document.getElementById('inputCarbohidratos');
+  const selectCategoria = document.getElementById('selectCategoriaComida');
+  const inputCantidad = document.getElementById('inputCantidad');
 
   if (input) input.value = item.description;
 
@@ -264,6 +275,8 @@ function seleccionarAlimento(item) {
     carbsPor100gSeleccionado = null;
     ocultarCamposPorcion();
     if (inputCarbs) inputCarbs.value = item.carbohidratosAbsolutos;
+    if (selectCategoria && item.categoria) selectCategoria.value = item.categoria;
+    if (inputCantidad && item.cantidad) inputCantidad.value = item.cantidad;
     return;
   }
 
@@ -401,7 +414,9 @@ async function procesarCodigoBarras(codigo) {
 // --- Alta de eventos ---
 
 function guardarNuevoEvento() {
-  const categoria = document.getElementById('inputCategoriaComida').value.trim();
+  const categoria = document.getElementById('inputCategoriaComida').value.trim(); // nombre de la comida (ej. "Milanesa")
+  const tipoCategoria = document.getElementById('selectCategoriaComida').value; // categoría del recetario (ej. "Carnes")
+  const cantidad = document.getElementById('inputCantidad').value.trim(); // porción (ej. "1 plato", "150g")
   const momentoDia = document.getElementById('selectMomentoDia').value;
   const fechaHora = document.getElementById('inputFechaHora').value;
   const carbohidratos = parseFloat(document.getElementById('inputCarbohidratos').value);
@@ -419,6 +434,8 @@ function guardarNuevoEvento() {
     id: generarId(),
     categoriaComida: categoria,
     categoriaNormalizada: categoria.toLowerCase(),
+    tipoCategoria: tipoCategoria || 'Otro',
+    cantidad: cantidad || null,
     momentoDia,
     fechaHora,
     carbohidratos,
@@ -439,11 +456,12 @@ function guardarNuevoEvento() {
   if (estaLogueado()) guardarDocEnNube('eventos', evento);
 
   // Recetario: si ya existe algo parecido, solo suma un uso; si no, lo agrega como receta nueva
-  registrarUsoOCrear(categoria, carbohidratos);
+  registrarUsoOCrear(categoria, carbohidratos, tipoCategoria, cantidad);
 
   document.getElementById('formNuevoEvento').reset();
   precargarFechaHora();
   sugerirMomentoDelDia();
+  poblarSelectCategorias();
   carbsPor100gSeleccionado = null;
   ocultarCamposPorcion();
   ocultarResultadoIA();
@@ -618,8 +636,8 @@ function renderTarjetaEvento(evento, mostrarAcciones) {
     <div class="event-card">
       <div class="event-card-top">
         <div>
-          <div class="event-card-title">${evento.categoriaComida}</div>
-          <div class="event-card-meta">${ETIQUETAS_MOMENTO[evento.momentoDia] || evento.momentoDia} · ${formatearFechaHora(evento.fechaHora)}</div>
+          <div class="event-card-title">${evento.categoriaComida}${evento.cantidad ? ` <span style="color: var(--text-muted); font-weight: 400; font-size: 0.82rem;">· ${evento.cantidad}</span>` : ''}</div>
+          <div class="event-card-meta">${evento.tipoCategoria ? `${evento.tipoCategoria} · ` : ''}${ETIQUETAS_MOMENTO[evento.momentoDia] || evento.momentoDia} · ${formatearFechaHora(evento.fechaHora)}</div>
         </div>
       </div>
       <div class="event-card-stats">

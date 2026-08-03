@@ -2,6 +2,7 @@
 // DBTYCS — Recetario Personal
 // Base local de comidas (localStorage['dbtycs_recetario']), precargada con
 // platos argentinos típicos y que se expande sola con lo que vas cargando.
+// Cada receta guarda: nombre, categoría, cantidad (porción) y carbohidratos.
 //
 // La "detección de duplicados" usa coincidencia difusa de texto (distancia
 // de Levenshtein) — así "milanesa", "Milanesa!" y "milaneza" se reconocen
@@ -14,57 +15,64 @@
 const RECETARIO_KEY = 'dbtycs_recetario';
 const UMBRAL_SIMILITUD = 0.78; // 0 a 1. Más alto = exige coincidencia más exacta.
 
-// --- Comidas argentinas típicas precargadas (carbohidratos estimados, porción media) ---
+export const CATEGORIAS_COMIDA = [
+  'Pastas', 'Carnes', 'Pollo y Aves', 'Pescados y Mariscos', 'Panificados',
+  'Lácteos', 'Frutas', 'Verduras y Ensaladas', 'Legumbres', 'Arroz y Cereales',
+  'Snacks y Frituras', 'Dulces y Postres', 'Bebidas', 'Otro',
+];
+
+// --- Comidas argentinas típicas precargadas ---
+// [nombre, carbohidratos (g), categoría, cantidad/porción]
 const RECETAS_PRECARGADAS = [
-  ['Milanesa de carne (sola)', 5],
-  ['Milanesa de carne con puré', 45],
-  ['Milanesa de carne con papas fritas', 55],
-  ['Milanesa de pollo', 8],
-  ['Milanesa napolitana con papas fritas', 60],
-  ['Milanesa de soja', 15],
-  ['Puré de papas', 35],
-  ['Papas fritas', 45],
-  ['Fideos con salsa de tomate', 70],
-  ['Fideos con manteca y queso', 65],
-  ['Ñoquis con salsa', 65],
-  ['Ravioles con salsa', 60],
-  ['Canelones', 55],
-  ['Arroz blanco', 45],
-  ['Arroz con pollo', 50],
-  ['Asado (carne sola)', 2],
-  ['Asado con ensalada', 10],
-  ['Choripán', 40],
-  ['Empanada de carne', 20],
-  ['Empanada de pollo', 20],
-  ['Empanada de jamón y queso', 22],
-  ['Empanada de humita', 25],
-  ['Pizza muzzarella (2 porciones)', 60],
-  ['Pizza fugazzeta (2 porciones)', 65],
-  ['Tarta de jamón y queso', 30],
-  ['Tarta de verdura', 25],
-  ['Tarta pascualina', 28],
-  ['Sándwich de milanesa', 55],
-  ['Sándwich de jamón y queso', 35],
-  ['Tostado (2 unidades)', 30],
-  ['Hamburguesa completa', 40],
-  ['Guiso de lentejas', 45],
-  ['Guiso de arroz', 50],
-  ['Locro', 40],
-  ['Puchero', 30],
-  ['Ensalada mixta', 8],
-  ['Ensalada rusa', 25],
-  ['Sopa de verduras', 15],
-  ['Pastel de papa', 35],
-  ['Polenta', 55],
-  ['Medialunas (2 unidades)', 40],
-  ['Tostadas con dulce de leche (2 unidades)', 40],
-  ['Mate cocido con leche', 8],
-  ['Yogur con cereal', 30],
-  ['Flan con dulce de leche', 45],
-  ['Alfajor', 30],
-  ['Facturas (unidad)', 25],
-  ['Helado (2 bochas)', 35],
-  ['Fruta (1 unidad mediana)', 20],
+  ['Milanesa de carne (sola)', 5, 'Carnes', '1 unidad'],
+  ['Milanesa de carne con puré', 45, 'Carnes', '1 porción'],
+  ['Milanesa de carne con papas fritas', 55, 'Carnes', '1 porción'],
+  ['Milanesa de pollo', 8, 'Pollo y Aves', '1 unidad'],
+  ['Milanesa napolitana con papas fritas', 60, 'Carnes', '1 porción'],
+  ['Milanesa de soja', 15, 'Legumbres', '1 unidad'],
+  ['Puré de papas', 35, 'Verduras y Ensaladas', '1 plato'],
+  ['Papas fritas', 45, 'Snacks y Frituras', '1 porción'],
+  ['Fideos con salsa de tomate', 70, 'Pastas', '1 plato'],
+  ['Fideos con manteca y queso', 65, 'Pastas', '1 plato'],
+  ['Ñoquis con salsa', 65, 'Pastas', '1 plato'],
+  ['Ravioles con salsa', 60, 'Pastas', '1 plato'],
+  ['Canelones', 55, 'Pastas', '6 unidades'],
+  ['Arroz blanco', 45, 'Arroz y Cereales', '1 plato'],
+  ['Arroz con pollo', 50, 'Arroz y Cereales', '1 plato'],
+  ['Asado (carne sola)', 2, 'Carnes', '200g'],
+  ['Asado con ensalada', 10, 'Carnes', '1 porción'],
+  ['Choripán', 40, 'Carnes', '1 unidad'],
+  ['Empanada de carne', 20, 'Panificados', '1 unidad'],
+  ['Empanada de pollo', 20, 'Panificados', '1 unidad'],
+  ['Empanada de jamón y queso', 22, 'Panificados', '1 unidad'],
+  ['Empanada de humita', 25, 'Panificados', '1 unidad'],
+  ['Pizza muzzarella', 60, 'Panificados', '2 porciones'],
+  ['Pizza fugazzeta', 65, 'Panificados', '2 porciones'],
+  ['Tarta de jamón y queso', 30, 'Panificados', '1 porción'],
+  ['Tarta de verdura', 25, 'Verduras y Ensaladas', '1 porción'],
+  ['Tarta pascualina', 28, 'Verduras y Ensaladas', '1 porción'],
+  ['Sándwich de milanesa', 55, 'Carnes', '1 unidad'],
+  ['Sándwich de jamón y queso', 35, 'Lácteos', '1 unidad'],
+  ['Tostado', 30, 'Panificados', '2 unidades'],
+  ['Hamburguesa completa', 40, 'Carnes', '1 unidad'],
+  ['Guiso de lentejas', 45, 'Legumbres', '1 plato'],
+  ['Guiso de arroz', 50, 'Arroz y Cereales', '1 plato'],
+  ['Locro', 40, 'Legumbres', '1 plato'],
+  ['Puchero', 30, 'Carnes', '1 plato'],
+  ['Ensalada mixta', 8, 'Verduras y Ensaladas', '1 plato'],
+  ['Ensalada rusa', 25, 'Verduras y Ensaladas', '1 porción'],
+  ['Sopa de verduras', 15, 'Verduras y Ensaladas', '1 plato'],
+  ['Pastel de papa', 35, 'Carnes', '1 porción'],
+  ['Polenta', 55, 'Arroz y Cereales', '1 plato'],
+  ['Medialunas', 40, 'Panificados', '2 unidades'],
+  ['Tostadas con dulce de leche', 40, 'Panificados', '2 unidades'],
+  ['Mate cocido con leche', 8, 'Bebidas', '1 taza'],
+  ['Yogur con cereal', 30, 'Lácteos', '1 porción'],
+  ['Flan con dulce de leche', 45, 'Dulces y Postres', '1 porción'],
+  ['Alfajor', 30, 'Dulces y Postres', '1 unidad'],
+  ['Facturas', 25, 'Panificados', '1 unidad'],
+  ['Helado', 35, 'Dulces y Postres', '2 bochas'],
+  ['Fruta', 20, 'Frutas', '1 unidad mediana'],
 ];
 
 // --- Normalización y similitud de texto ---
@@ -125,9 +133,11 @@ export function cargarRecetario() {
   }
 
   // Primera vez: sembramos el recetario con las comidas precargadas
-  const inicial = RECETAS_PRECARGADAS.map(([nombre, carbohidratos]) => ({
+  const inicial = RECETAS_PRECARGADAS.map(([nombre, carbohidratos, categoria, cantidad]) => ({
     id: generarIdReceta(),
     nombre,
+    categoria,
+    cantidad,
     carbohidratos,
     vecesUsada: 0,
     origen: 'precargada',
@@ -151,9 +161,10 @@ export function buscarEnRecetario(termino, minimo = UMBRAL_SIMILITUD) {
 }
 
 // Se llama después de guardar una comida: si ya existe algo parecido en el
-// recetario, solo le suma un uso (evita duplicados tipo "milanesa"/"Milaneza").
-// Si no existe nada parecido, la agrega como receta nueva propia.
-export function registrarUsoOCrear(nombreComida, carbohidratos) {
+// recetario, solo le suma un uso y actualiza categoría/cantidad si cambiaron
+// (evita duplicados tipo "milanesa"/"Milaneza"). Si no existe nada parecido,
+// la agrega como receta nueva propia.
+export function registrarUsoOCrear(nombreComida, carbohidratos, categoria, cantidad) {
   const recetario = cargarRecetario();
   const coincidencias = buscarEnRecetario(nombreComida);
 
@@ -162,6 +173,8 @@ export function registrarUsoOCrear(nombreComida, carbohidratos) {
     const idx = recetario.findIndex((r) => r.id === mejor.id);
     if (idx >= 0) {
       recetario[idx].vecesUsada = (recetario[idx].vecesUsada || 0) + 1;
+      if (categoria) recetario[idx].categoria = categoria;
+      if (cantidad) recetario[idx].cantidad = cantidad;
       recetario[idx].actualizadoEn = new Date().toISOString();
       guardarRecetarioCompleto(recetario);
     }
@@ -171,6 +184,8 @@ export function registrarUsoOCrear(nombreComida, carbohidratos) {
   recetario.push({
     id: generarIdReceta(),
     nombre: nombreComida,
+    categoria: categoria || 'Otro',
+    cantidad: cantidad || null,
     carbohidratos,
     vecesUsada: 1,
     origen: 'personal',

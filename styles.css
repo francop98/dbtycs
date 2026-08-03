@@ -487,44 +487,44 @@ header p {
 }
 
 /* ==========================================
-   REGISTRO DE INSULINA (faltaban estas clases)
+   REGISTRO DE INSULINA — modo listado/tabla
    ========================================== */
-.day-group {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 18px;
-  margin-bottom: 14px;
+.ins-day {
+  margin-bottom: 18px;
 }
 
-.day-group-header {
+.ins-day-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
-  padding-bottom: 12px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid var(--border);
+  gap: 8px;
+  background: var(--bg);
+  padding: 8px 4px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 2px;
 }
 
 .day-date {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   color: var(--text-main);
   text-transform: capitalize;
 }
 
 .day-totals {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .total-pill {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  padding: 4px 10px;
+  padding: 3px 9px;
   border-radius: 20px;
   border: 1px solid var(--border);
   color: var(--text-muted);
@@ -548,32 +548,63 @@ header p {
   background: var(--surface-hover);
 }
 
-.entry-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 9px 0;
-  border-bottom: 1px solid #1b2637;
-  font-size: 0.87rem;
+.ins-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
-.entry-row:last-child {
+.ins-tabla tr {
+  border-bottom: 1px solid #1b2637;
+}
+
+.ins-tabla tr:last-child {
   border-bottom: none;
 }
 
-.entry-time {
+.ins-tabla td {
+  padding: 9px 10px;
+  font-size: 0.85rem;
+  vertical-align: middle;
+}
+
+.ins-td-hora {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  width: 1%;
+}
+
+.ins-td-unidades {
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  width: 1%;
+}
+
+.ins-td-notas {
   color: var(--text-muted);
   font-size: 0.8rem;
-  width: 48px;
-  flex-shrink: 0;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ins-td-accion {
+  width: 1%;
+  text-align: right;
 }
 
 .entry-type-badge {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 6px;
-  flex-shrink: 0;
+  white-space: nowrap;
+  display: inline-block;
 }
 
 .entry-type-badge.basal {
@@ -586,33 +617,44 @@ header p {
   background: rgba(244, 114, 182, 0.12);
 }
 
-.entry-units {
-  font-weight: 700;
-  color: var(--text-main);
-  flex-shrink: 0;
-}
-
-.entry-notes {
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .entry-delete {
   background: none;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   padding: 2px 6px;
-  flex-shrink: 0;
 }
 
 .entry-delete:hover {
   color: #f87171;
+}
+
+/* En mobile, las notas dejan de recortarse: pasan a su propia línea */
+@media (max-width: 600px) {
+  .ins-tabla, .ins-tabla tbody, .ins-tabla tr, .ins-tabla td {
+    display: block;
+    width: 100%;
+  }
+  .ins-tabla tr {
+    padding: 8px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+  }
+  .ins-td-hora, .ins-td-unidades, .ins-td-accion {
+    width: auto;
+  }
+  .ins-td-notas {
+    max-width: 100%;
+    white-space: normal;
+    flex-basis: 100%;
+    order: 5;
+  }
+  .ins-td-accion {
+    margin-left: auto;
+  }
 }
 
 /* Tendencia de Insulina Activa (subiendo/bajando/estable) */
@@ -669,5 +711,67 @@ header p {
   .tab-btn {
     font-size: 0.88rem;
     padding: 8px;
+  }
+
+  /* Headers de todas las páginas: título + botones envuelven en vez de
+     desbordar o apretarse (afecta index.html, registro.html, insulina.html,
+     insulinaactiva.html, consejos.html — todas comparten esta estructura) */
+  header {
+    flex-wrap: wrap;
+    row-gap: 12px;
+  }
+
+  header h1 {
+    font-size: 1.4rem;
+  }
+
+  header > div:last-child {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  /* Evita el zoom automático de iOS al enfocar un input con fuente chica */
+  .form-group input,
+  .form-group select,
+  .form-group textarea,
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="date"],
+  input[type="datetime-local"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Tarjetas con menos padding para aprovechar el ancho */
+  .form-card,
+  .card {
+    padding: 16px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /* Botones de acción de header (Panel, Registro, Activa, Salir, etc.)
+     un poco más chicos para que entren varios sin desbordar */
+  header .btn,
+  header .btn-secondary {
+    font-size: 0.8rem;
+    padding: 8px 12px;
+  }
+
+  /* Calculadora de dosis: botones ya son 100% ancho, solo ajustamos el gap */
+  #cardCalculadora > div {
+    gap: 8px;
+  }
+
+  /* Widget de Insulina Activa: que los dos valores no queden muy angostos */
+  .card [style*="min-width: 140px"] {
+    min-width: 45% !important;
   }
 }
