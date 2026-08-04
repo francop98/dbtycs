@@ -23,32 +23,13 @@
 
       <form id="formNuevoEvento">
         <div class="form-grid">
-          <div class="form-group" style="position: relative;">
+          <div class="form-group">
             <label for="inputCategoriaComida">¿Qué comiste?</label>
-            <input type="text" id="inputCategoriaComida" list="listaCategorias" placeholder="Ej. Pasta, Milanesa..." autocomplete="off" required>
-            <datalist id="listaCategorias">
-              <option value="Pasta">
-              <option value="Arroz">
-              <option value="Milanesa">
-              <option value="Pizza">
-              <option value="Empanadas">
-              <option value="Ensalada">
-              <option value="Guiso">
-              <option value="Asado">
-              <option value="Sándwich">
-              <option value="Tarta">
-              <option value="Puré">
-              <option value="Pollo">
-              <option value="Pescado">
-              <option value="Hamburguesa">
-              <option value="Sushi">
-              <option value="Fruta">
-              <option value="Yogur">
-              <option value="Cereal">
-              <option value="Tostadas">
-            </datalist>
-            <div id="resultadosBusquedaComida" style="display:none; position: absolute; top: 100%; left: 0; right: 0; z-index: 20; background: #0f172a; border: 1px solid var(--border); border-radius: 8px; margin-top: 4px; max-height: 220px; overflow-y: auto;"></div>
-            <button type="button" id="btnEscanearCodigo" class="btn btn-secondary btn-small" style="margin-top: 8px;">📷 Escanear código de barras</button>
+            <input type="text" id="inputCategoriaComida" placeholder="Escribilo manualmente..." autocomplete="off" required>
+            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+              <button type="button" id="btnAbrirComidasRegistradas" class="btn btn-secondary btn-small">📋 Comidas Registradas</button>
+              <button type="button" id="btnEscanearCodigo" class="btn btn-secondary btn-small">📷 Escanear código de barras</button>
+            </div>
           </div>
 
           <div class="form-group" id="grupoGramosPorcion" style="display: none;">
@@ -119,6 +100,37 @@
         <button type="submit" class="btn" style="width: 100%;">Guardar Registro</button>
       </form>
 
+      <!-- Registro Manual de Comidas: agregar/editar comidas en tu base de datos, sin registrar una comida de hoy -->
+      <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
+        <div class="section-title" style="margin-top: 0;">📝 Registro Manual de Comidas</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+          Agregá comidas a tu base de datos para más adelante elegirlas rápido desde "Comidas Registradas", sin tener que anotar todo de nuevo.
+        </p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="inputNombreManual">Comida</label>
+            <input type="text" id="inputNombreManual" placeholder="Ej. Milanesa con puré">
+          </div>
+          <div class="form-group">
+            <label for="selectCategoriaManual">Categoría</label>
+            <select id="selectCategoriaManual"></select>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="inputCantidadManual">Cantidad / porción</label>
+            <input type="text" id="inputCantidadManual" placeholder="Ej. 1 porción, 150g, 2 unidades">
+          </div>
+          <div class="form-group">
+            <label for="inputCarbohidratosManual">Carbohidratos (g)</label>
+            <input type="number" id="inputCarbohidratosManual" min="0" step="1" placeholder="Ej. 45">
+          </div>
+        </div>
+        <button type="button" id="btnGuardarManual" class="btn btn-secondary" style="width: 100%;">Agregar a mi base de datos</button>
+
+        <div id="listaRecetarioManual" style="margin-top: 16px;"></div>
+      </div>
+
       <!-- Análisis con IA -->
       <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
         <div class="section-title" style="margin-top: 0;">🤖 Analizar con IA</div>
@@ -154,6 +166,18 @@
     <div class="section-title">Historial reciente</div>
     <div class="event-list" id="listaHistorial"></div>
   </main>
+</div>
+
+<!-- Modal Comidas Registradas -->
+<div class="modal" id="modalComidasRegistradas">
+  <div class="modal-content" style="max-width: 520px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h2>Comidas Registradas</h2>
+      <button id="btnCerrarComidasRegistradas" class="btn btn-secondary" style="padding: 4px 10px;">&times;</button>
+    </div>
+    <input type="text" id="inputBuscarComidaRegistrada" placeholder="Buscar en tu base de comidas..." autocomplete="off" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background-color: #0f172a; color: var(--text-main); font-size: 0.9rem; margin-bottom: 12px;">
+    <div id="resultadosComidasRegistradas" style="max-height: 55vh; overflow-y: auto;"></div>
+  </div>
 </div>
 
 <!-- Modal Escáner de Código de Barras -->

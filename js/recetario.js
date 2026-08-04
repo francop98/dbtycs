@@ -160,7 +160,45 @@ export function buscarEnRecetario(termino, minimo = UMBRAL_SIMILITUD) {
     .sort((a, b) => b.score - a.score);
 }
 
-// Se llama después de guardar una comida: si ya existe algo parecido en el
+// Se llama desde el "Registro Manual de Comidas": agrega una receta nueva a
+// la base, o actualiza los datos de una existente si ya había algo parecido
+// (sin sumarle un uso, porque no se registró ninguna comida real todavía).
+export function agregarOActualizarManual(nombre, categoria, cantidad, carbohidratos) {
+  const recetario = cargarRecetario();
+  const coincidencias = buscarEnRecetario(nombre);
+
+  if (coincidencias.length > 0) {
+    const existente = coincidencias[0].receta;
+    const idx = recetario.findIndex((r) => r.id === existente.id);
+    if (idx >= 0) {
+      recetario[idx].categoria = categoria || recetario[idx].categoria;
+      recetario[idx].cantidad = cantidad || recetario[idx].cantidad;
+      recetario[idx].carbohidratos = carbohidratos;
+      recetario[idx].actualizadoEn = new Date().toISOString();
+      guardarRecetarioCompleto(recetario);
+      return { actualizada: true, receta: recetario[idx] };
+    }
+  }
+
+  const nueva = {
+    id: generarIdReceta(),
+    nombre,
+    categoria: categoria || 'Otro',
+    cantidad: cantidad || null,
+    carbohidratos,
+    vecesUsada: 0,
+    origen: 'personal',
+    creadoEn: new Date().toISOString(),
+  };
+  recetario.push(nueva);
+  guardarRecetarioCompleto(recetario);
+  return { actualizada: false, receta: nueva };
+}
+
+export function eliminarReceta(id) {
+  const recetario = cargarRecetario().filter((r) => r.id !== id);
+  guardarRecetarioCompleto(recetario);
+}
 // recetario, solo le suma un uso y actualiza categoría/cantidad si cambiaron
 // (evita duplicados tipo "milanesa"/"Milaneza"). Si no existe nada parecido,
 // la agrega como receta nueva propia.

@@ -11,7 +11,7 @@
 import { auth } from './firebase-init.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { guardarDocEnNube, eliminarDocDeNube, sincronizarColeccion, estaLogueado } from './firestore-sync.js';
-import { buscarEnRecetario, registrarUsoOCrear, CATEGORIAS_COMIDA } from './recetario.js';
+import { buscarEnRecetario, registrarUsoOCrear, agregarOActualizarManual, eliminarReceta, cargarRecetario, CATEGORIAS_COMIDA } from './recetario.js';
 
 const EVENTOS_KEY = 'dbtycs_eventos';
 const USDA_API_KEY = 'VGps3fGihKwWQ2UYCgjoNQXHZDrXcBaOF3R91BCe';
@@ -39,7 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
   sugerirMomentoDelDia();
   poblarSelectCategorias();
   renderTodo();
-  inicializarBusquedaUSDA();
+  inicializarComidasRegistradas();
+  inicializarRegistroManual();
   inicializarAnalisisIA();
 
   const form = document.getElementById('formNuevoEvento');
@@ -114,40 +115,76 @@ const OFF_PRODUCT_URL = 'https://world.openfoodfacts.org/api/v0/product';
 
 let zxingReader = null;
 
-function inicializarBusquedaUSDA() {
-  const input = document.getElementById('inputCategoriaComida');
-  const resultadosDiv = document.getElementById('resultadosBusquedaComida');
-  if (!input || !resultadosDiv) return;
+function inicializarComidasRegistradas() {
+  const btnAbrir = document.getElementById('btnAbrirComidasRegistradas');
+  const btnCerrar = document.getElementById('btnCerrarComidasRegistradas');
+  const modal = document.getElementById('modalComidasRegistradas');
+  const inputBuscar = document.getElementById('inputBuscarComidaRegistrada');
+  const inputComida = document.getElementById('inputCategoriaComida');
 
-  input.addEventListener('input', () => {
-    // Si el usuario vuelve a escribir, invalidamos la selección previa
-    carbsPor100gSeleccionado = null;
-    ocultarCamposPorcion();
+  // Si edita el texto a mano después de haber elegido algo, invalidamos esa selección previa
+  if (inputComida) {
+    inputComida.addEventListener('input', () => {
+      carbsPor100gSeleccionado = null;
+      ocultarCamposPorcion();
+    });
+  }
 
-    const termino = input.value.trim();
-    clearTimeout(debounceTimeoutBusqueda);
+  if (btnAbrir && modal) {
+    btnAbrir.addEventListener('click', () => {
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+      if (inputBuscar) {
+        inputBuscar.value = '';
+        inputBuscar.focus();
+      }
+      mostrarTodoElRecetarioEnModal();
+    });
+  }
 
-    if (termino.length < 3) {
-      resultadosDiv.style.display = 'none';
-      resultadosDiv.innerHTML = '';
-      return;
-    }
+  if (btnCerrar && modal) {
+    btnCerrar.addEventListener('click', () => {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+    });
+  }
 
-    debounceTimeoutBusqueda = setTimeout(() => buscarEnBasesDeDatos(termino), 450);
-  });
+  if (inputBuscar) {
+    inputBuscar.addEventListener('input', () => {
+      const termino = inputBuscar.value.trim();
+      clearTimeout(debounceTimeoutBusqueda);
 
-  // Cerrar el desplegable si se hace clic afuera
-  document.addEventListener('click', (e) => {
-    if (!resultadosDiv.contains(e.target) && e.target !== input) {
-      resultadosDiv.style.display = 'none';
-    }
-  });
+      if (termino.length < 2) {
+        mostrarTodoElRecetarioEnModal();
+        return;
+      }
+
+      debounceTimeoutBusqueda = setTimeout(() => buscarEnBasesDeDatos(termino), 400);
+    });
+  }
 
   inicializarScanner();
 }
 
+function mostrarTodoElRecetarioEnModal() {
+  const recetario = cargarRecetario()
+    .slice()
+    .sort((a, b) => (b.vecesUsada || 0) - (a.vecesUsada || 0) || a.nombre.localeCompare(b.nombre));
+
+  const resultados = recetario.map((receta) => ({
+    tipo: 'recetario',
+    description: receta.nombre,
+    carbohidratosAbsolutos: receta.carbohidratos,
+    categoria: receta.categoria,
+    cantidad: receta.cantidad,
+    source: receta.origen === 'personal' ? 'Tu recetario' : 'Recetario · comida típica',
+  }));
+
+  renderResultadosBusqueda(resultados);
+}
+
 async function buscarEnBasesDeDatos(termino) {
-  const resultadosDiv = document.getElementById('resultadosBusquedaComida');
+  const resultadosDiv = document.getElementById('resultadosComidasRegistradas');
   if (!resultadosDiv) return;
 
   resultadosDiv.style.display = 'block';
@@ -228,7 +265,7 @@ function extraerCarbohidratosPor100gUSDA(food) {
 }
 
 function renderResultadosBusqueda(resultados) {
-  const resultadosDiv = document.getElementById('resultadosBusquedaComida');
+  const resultadosDiv = document.getElementById('resultadosComidasRegistradas');
   if (!resultadosDiv) return;
 
   if (!resultados.length) {
@@ -258,16 +295,16 @@ function renderResultadosBusqueda(resultados) {
 
 function seleccionarAlimento(item) {
   const input = document.getElementById('inputCategoriaComida');
-  const resultadosDiv = document.getElementById('resultadosBusquedaComida');
+  const modal = document.getElementById('modalComidasRegistradas');
   const inputCarbs = document.getElementById('inputCarbohidratos');
   const selectCategoria = document.getElementById('selectCategoriaComida');
   const inputCantidad = document.getElementById('inputCantidad');
 
   if (input) input.value = item.description;
 
-  if (resultadosDiv) {
-    resultadosDiv.style.display = 'none';
-    resultadosDiv.innerHTML = '';
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
   }
 
   if (item.tipo === 'recetario') {
@@ -374,9 +411,13 @@ function detenerScanner() {
 }
 
 async function procesarCodigoBarras(codigo) {
-  const resultadosDiv = document.getElementById('resultadosBusquedaComida');
+  const resultadosDiv = document.getElementById('resultadosComidasRegistradas');
+  const modal = document.getElementById('modalComidasRegistradas');
+  if (modal) {
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+  }
   if (resultadosDiv) {
-    resultadosDiv.style.display = 'block';
     resultadosDiv.innerHTML = `<div style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">Buscando producto con código ${codigo} en Open Food Facts...</div>`;
   }
 
@@ -400,9 +441,9 @@ async function procesarCodigoBarras(codigo) {
     }
 
     carbsPor100gSeleccionado = carbs;
-    if (resultadosDiv) {
-      resultadosDiv.style.display = 'none';
-      resultadosDiv.innerHTML = '';
+    if (modal) {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
     }
     mostrarCamposPorcion(carbs, 'Open Food Facts (código de barras)');
   } catch (e) {
@@ -683,8 +724,88 @@ function renderTodo() {
   }
 }
 
+// --- Registro Manual de Comidas ---
+
+function inicializarRegistroManual() {
+  const selectCategoriaManual = document.getElementById('selectCategoriaManual');
+  if (selectCategoriaManual) {
+    selectCategoriaManual.innerHTML = CATEGORIAS_COMIDA.map((cat) => `<option value="${cat}">${cat}</option>`).join('');
+  }
+
+  const btnGuardarManual = document.getElementById('btnGuardarManual');
+  if (btnGuardarManual) {
+    btnGuardarManual.addEventListener('click', guardarComidaManual);
+  }
+
+  renderRecetarioManual();
+}
+
+function guardarComidaManual() {
+  const nombre = document.getElementById('inputNombreManual').value.trim();
+  const categoria = document.getElementById('selectCategoriaManual').value;
+  const cantidad = document.getElementById('inputCantidadManual').value.trim();
+  const carbohidratos = parseFloat(document.getElementById('inputCarbohidratosManual').value);
+
+  if (!nombre || isNaN(carbohidratos)) {
+    alert('Completá al menos el nombre de la comida y los carbohidratos.');
+    return;
+  }
+
+  const resultado = agregarOActualizarManual(nombre, categoria, cantidad, carbohidratos);
+
+  document.getElementById('inputNombreManual').value = '';
+  document.getElementById('inputCantidadManual').value = '';
+  document.getElementById('inputCarbohidratosManual').value = '';
+
+  renderRecetarioManual();
+
+  if (resultado.actualizada) {
+    alert(`Ya tenías algo parecido a "${nombre}" guardado — actualicé sus datos en vez de crear una entrada duplicada.`);
+  }
+}
+
+function renderRecetarioManual() {
+  const contenedor = document.getElementById('listaRecetarioManual');
+  if (!contenedor) return;
+
+  const recetario = cargarRecetario()
+    .slice()
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  if (!recetario.length) {
+    contenedor.innerHTML = '<div class="empty-state">Todavía no hay comidas en tu base de datos.</div>';
+    return;
+  }
+
+  contenedor.innerHTML = `
+    <div class="section-title" style="font-size: 0.85rem;">Tu base de datos (${recetario.length})</div>
+    <div class="ins-day">
+      <table class="ins-tabla">
+        <tbody>
+          ${recetario.map((r) => `
+            <tr>
+              <td class="ins-td-notas" style="font-weight: 600; color: var(--text-main);">${r.nombre}</td>
+              <td class="ins-td-notas">${r.categoria || ''}</td>
+              <td class="ins-td-notas">${r.cantidad || ''}</td>
+              <td class="ins-td-unidades">${r.carbohidratos} g</td>
+              <td class="ins-td-accion"><button class="entry-delete" onclick="eliminarRecetaManual('${r.id}')" title="Eliminar">✕</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function eliminarRecetaManual(id) {
+  if (!confirm('¿Eliminar esta comida de tu base de datos? No se puede deshacer.')) return;
+  eliminarReceta(id);
+  renderRecetarioManual();
+}
+
 // Los módulos ES no exponen funciones al scope global automáticamente,
 // pero el HTML generado usa onclick="eliminarEvento(...)" y
 // onchange="guardarControl(...)" — hace falta colgarlas de window.
 window.eliminarEvento = eliminarEvento;
 window.guardarControl = guardarControl;
+window.eliminarRecetaManual = eliminarRecetaManual;
