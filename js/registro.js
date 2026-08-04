@@ -385,11 +385,14 @@ async function iniciarLecturaCodigoBarras() {
 
   try {
     zxingReader = new ZXing.BrowserMultiFormatReader();
-    const dispositivos = await ZXing.BrowserCodeReader.listVideoInputDevices();
-    // La cámara trasera suele quedar última en la lista de dispositivos en celulares
-    const deviceId = dispositivos.length ? dispositivos[dispositivos.length - 1].deviceId : undefined;
 
-    zxingReader.decodeFromVideoDevice(deviceId, 'videoScanner', (resultado, error) => {
+    // Pedimos la cámara trasera directamente (facingMode), sin enumerar
+    // dispositivos primero — ese paso de más puede romper la conexión
+    // entre el toque del botón y el pedido de cámara en iOS/WebKit,
+    // haciendo que el permiso se rechace solo.
+    const constraints = { video: { facingMode: { ideal: 'environment' } } };
+
+    zxingReader.decodeFromConstraints(constraints, 'videoScanner', (resultado, error) => {
       if (resultado) {
         const codigo = resultado.getText();
         detenerScanner();
