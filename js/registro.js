@@ -19,7 +19,7 @@ const USDA_SEARCH_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
 
 // TODO Franco: reemplazá esta URL por la que te da Vercel al desplegar
 // dbtycs-ai-proxy, agregando /api/analizar-comida al final.
-const PROXY_IA_URL = 'https://TU-PROYECTO.vercel.app/api/analizar-comida';
+const PROXY_IA_URL = 'https://dbtycs.vercel.app/api/analizar-comida';
 
 const ETIQUETAS_MOMENTO = {
   desayuno: 'Desayuno',
