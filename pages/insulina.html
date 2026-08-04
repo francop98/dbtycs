@@ -20,6 +20,8 @@
   </header>
 
   <main>
+
+  <main>
     <!-- Formulario nueva aplicación -->
     <div class="form-card">
       <div class="section-title" style="margin-top: 0;">Nueva aplicación</div>
@@ -27,17 +29,11 @@
       <form id="formNuevaInsulina">
         <div class="form-grid">
           <div class="form-group">
-            <label>Tipo</label>
-            <div style="display: flex; gap: 10px;">
-              <label style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--text-main); cursor: pointer; background:#0f172a; border:1px solid var(--border); border-radius:8px; padding:10px 14px; flex:1;">
-                <input type="radio" name="tipoInsulina" value="basal" id="radioTipoBasal" checked style="accent-color: #38bdf8;">
-                Basal
-              </label>
-              <label style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--text-main); cursor: pointer; background:#0f172a; border:1px solid var(--border); border-radius:8px; padding:10px 14px; flex:1;">
-                <input type="radio" name="tipoInsulina" value="rapida" id="radioTipoRapida" style="accent-color: #f472b6;">
-                Rápida
-              </label>
-            </div>
+            <label for="selectTipoInsulina">Tipo</label>
+            <select id="selectTipoInsulina">
+              <option value="basal">Basal</option>
+              <option value="rapida">Rápida</option>
+            </select>
           </div>
 
           <div class="form-group">

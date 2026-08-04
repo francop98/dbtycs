@@ -67,7 +67,7 @@ function precargarFechaHoraInsulina() {
 // --- Alta ---
 
 function guardarNuevaAplicacion() {
-  const tipo = document.querySelector('input[name="tipoInsulina"]:checked')?.value;
+  const tipo = document.getElementById('selectTipoInsulina')?.value;
   const unidades = parseFloat(document.getElementById('inputUnidadesInsulina').value);
   const fechaHora = document.getElementById('inputFechaHoraInsulina').value;
   const notas = document.getElementById('inputNotasInsulina').value.trim();
@@ -92,7 +92,7 @@ function guardarNuevaAplicacion() {
   if (estaLogueado()) guardarDocEnNube('insulina', aplicacion);
 
   document.getElementById('formNuevaInsulina').reset();
-  document.getElementById('radioTipoBasal').checked = true;
+  document.getElementById('selectTipoInsulina').value = 'basal';
   precargarFechaHoraInsulina();
 
   renderHistorialInsulina();
