@@ -1,24 +1,33 @@
 // ============================================================================
 // DBTYCS — Registro de Comidas
 // Guarda eventos en localStorage['dbtycs_eventos'] como array de objetos.
-// Cada evento es la unidad base que va a alimentar el motor de análisis que
-// sugiere ajustes de Ratio I:C y FSI (agrupando por categoría de comida y/o
-// momento del día). Acá solo nos encargamos de la carga y edición de datos.
+// Sincroniza con Firestore cuando hay sesión iniciada.
 //
-// Ahora también sincroniza con Firestore cuando hay sesión iniciada.
+// "Comidas Registradas" es el hub único para ver, buscar, elegir o agregar
+// comidas a tu base de datos personal (recetario.js).
+//
+// El lector de código de barras está DESACTIVADO a pedido del usuario. El
+// código queda comentado al final del archivo para reactivarlo fácilmente.
 // ============================================================================
 
 import { auth } from './firebase-init.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { guardarDocEnNube, eliminarDocDeNube, sincronizarColeccion, estaLogueado } from './firestore-sync.js';
-import { buscarEnRecetario, registrarUsoOCrear, agregarOActualizarManual, eliminarReceta, cargarRecetario, CATEGORIAS_COMIDA } from './recetario.js';
+import {
+  buscarEnRecetario,
+  registrarUsoOCrear,
+  agregarOActualizarManual,
+  eliminarReceta,
+  cargarRecetario,
+  obtenerCategorias,
+  agregarCategoria,
+} from './recetario.js';
 
 const EVENTOS_KEY = 'dbtycs_eventos';
 const USDA_API_KEY = 'VGps3fGihKwWQ2UYCgjoNQXHZDrXcBaOF3R91BCe';
 const USDA_SEARCH_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
+const OFF_SEARCH_URL = 'https://world.openfoodfacts.org/cgi/search.pl';
 
-// TODO Franco: reemplazá esta URL por la que te da Vercel al desplegar
-// dbtycs-ai-proxy, agregando /api/analizar-comida al final.
 const PROXY_IA_URL = 'https://dbtycs.vercel.app/api/analizar-comida';
 
 const ETIQUETAS_MOMENTO = {
@@ -33,6 +42,7 @@ const ETIQUETAS_MOMENTO = {
 let carbsPor100gSeleccionado = null;
 let debounceTimeoutBusqueda = null;
 let ultimoResultadoIA = null;
+let ultimoTerminoBuscado = '';
 
 document.addEventListener('DOMContentLoaded', () => {
   precargarFechaHora();
@@ -40,7 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
   poblarSelectCategorias();
   renderTodo();
   inicializarComidasRegistradas();
-  inicializarRegistroManual();
   inicializarAnalisisIA();
 
   const form = document.getElementById('formNuevoEvento');
@@ -58,8 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
-
-// --- Utilidades ---
 
 function generarId() {
   return `evt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -87,12 +94,6 @@ function precargarFechaHora() {
   input.value = ahora.toISOString().slice(0, 16);
 }
 
-function poblarSelectCategorias() {
-  const select = document.getElementById('selectCategoriaComida');
-  if (!select) return;
-  select.innerHTML = CATEGORIAS_COMIDA.map((cat) => `<option value="${cat}">${cat}</option>`).join('');
-}
-
 function sugerirMomentoDelDia() {
   const select = document.getElementById('selectMomentoDia');
   if (!select) return;
@@ -108,12 +109,33 @@ function sugerirMomentoDelDia() {
   select.value = momento;
 }
 
-// --- Buscador combinado: USDA FoodData Central + Open Food Facts ---
+function poblarSelectCategorias() {
+  const select = document.getElementById('selectCategoriaComida');
+  if (!select) return;
+  const valorPrevio = select.value;
+  select.innerHTML = obtenerCategorias().map((cat) => `<option value="${cat}">${cat}</option>`).join('');
+  if (valorPrevio) select.value = valorPrevio;
+}
 
-const OFF_SEARCH_URL = 'https://world.openfoodfacts.org/cgi/search.pl';
-const OFF_PRODUCT_URL = 'https://world.openfoodfacts.org/api/v0/product';
+function poblarSelectCategoriaNuevaComida() {
+  const select = document.getElementById('selectCategoriaNuevaComida');
+  if (!select) return;
+  const valorPrevio = select.value;
+  select.innerHTML = obtenerCategorias().map((cat) => `<option value="${cat}">${cat}</option>`).join('');
+  if (valorPrevio) select.value = valorPrevio;
+}
 
-let zxingReader = null;
+function manejarNuevaCategoria(selectAActualizar) {
+  const nombre = prompt('Nombre de la nueva categoría:');
+  if (!nombre || !nombre.trim()) return;
+
+  agregarCategoria(nombre);
+  poblarSelectCategorias();
+  poblarSelectCategoriaNuevaComida();
+
+  const select = document.getElementById(selectAActualizar);
+  if (select) select.value = nombre.trim();
+}
 
 function inicializarComidasRegistradas() {
   const btnAbrir = document.getElementById('btnAbrirComidasRegistradas');
@@ -121,8 +143,14 @@ function inicializarComidasRegistradas() {
   const modal = document.getElementById('modalComidasRegistradas');
   const inputBuscar = document.getElementById('inputBuscarComidaRegistrada');
   const inputComida = document.getElementById('inputCategoriaComida');
+  const btnNuevaCategoria = document.getElementById('btnNuevaCategoria');
+  const btnNuevaCategoriaModal = document.getElementById('btnNuevaCategoriaModal');
+  const btnToggleAgregar = document.getElementById('btnToggleAgregarComida');
+  const panelAgregar = document.getElementById('panelAgregarComida');
+  const btnGuardarNuevaComida = document.getElementById('btnGuardarNuevaComida');
 
-  // Si edita el texto a mano después de haber elegido algo, invalidamos esa selección previa
+  poblarSelectCategoriaNuevaComida();
+
   if (inputComida) {
     inputComida.addEventListener('input', () => {
       carbsPor100gSeleccionado = null;
@@ -130,14 +158,23 @@ function inicializarComidasRegistradas() {
     });
   }
 
+  if (btnNuevaCategoria) {
+    btnNuevaCategoria.addEventListener('click', () => manejarNuevaCategoria('selectCategoriaComida'));
+  }
+  if (btnNuevaCategoriaModal) {
+    btnNuevaCategoriaModal.addEventListener('click', () => manejarNuevaCategoria('selectCategoriaNuevaComida'));
+  }
+
   if (btnAbrir && modal) {
     btnAbrir.addEventListener('click', () => {
       modal.classList.add('active');
       modal.style.display = 'flex';
+      if (panelAgregar) panelAgregar.style.display = 'none';
       if (inputBuscar) {
         inputBuscar.value = '';
         inputBuscar.focus();
       }
+      ultimoTerminoBuscado = '';
       mostrarTodoElRecetarioEnModal();
     });
   }
@@ -149,12 +186,52 @@ function inicializarComidasRegistradas() {
     });
   }
 
+  if (btnToggleAgregar && panelAgregar) {
+    btnToggleAgregar.addEventListener('click', () => {
+      const visible = panelAgregar.style.display !== 'none';
+      panelAgregar.style.display = visible ? 'none' : 'block';
+      if (!visible) document.getElementById('inputNombreNuevaComida')?.focus();
+    });
+  }
+
+  if (btnGuardarNuevaComida) {
+    btnGuardarNuevaComida.addEventListener('click', () => {
+      const nombre = document.getElementById('inputNombreNuevaComida').value.trim();
+      const categoria = document.getElementById('selectCategoriaNuevaComida').value;
+      const cantidad = document.getElementById('inputCantidadNuevaComida').value.trim();
+      const carbohidratos = parseFloat(document.getElementById('inputCarbsNuevaComida').value);
+
+      if (!nombre || isNaN(carbohidratos)) {
+        alert('Completá al menos el nombre de la comida y los carbohidratos.');
+        return;
+      }
+
+      const resultado = agregarOActualizarManual(nombre, categoria, cantidad, carbohidratos);
+
+      document.getElementById('inputNombreNuevaComida').value = '';
+      document.getElementById('inputCantidadNuevaComida').value = '';
+      document.getElementById('inputCarbsNuevaComida').value = '';
+      panelAgregar.style.display = 'none';
+
+      if (ultimoTerminoBuscado) {
+        buscarEnBasesDeDatos(ultimoTerminoBuscado);
+      } else {
+        mostrarTodoElRecetarioEnModal();
+      }
+
+      if (resultado.actualizada) {
+        alert(`Ya tenías algo parecido a "${nombre}" guardado — actualicé sus datos en vez de crear una entrada duplicada.`);
+      }
+    });
+  }
+
   if (inputBuscar) {
     inputBuscar.addEventListener('input', () => {
       const termino = inputBuscar.value.trim();
       clearTimeout(debounceTimeoutBusqueda);
 
       if (termino.length < 2) {
+        ultimoTerminoBuscado = '';
         mostrarTodoElRecetarioEnModal();
         return;
       }
@@ -162,8 +239,6 @@ function inicializarComidasRegistradas() {
       debounceTimeoutBusqueda = setTimeout(() => buscarEnBasesDeDatos(termino), 400);
     });
   }
-
-  inicializarScanner();
 }
 
 function mostrarTodoElRecetarioEnModal() {
@@ -173,30 +248,30 @@ function mostrarTodoElRecetarioEnModal() {
 
   const resultados = recetario.map((receta) => ({
     tipo: 'recetario',
+    id: receta.id,
     description: receta.nombre,
     carbohidratosAbsolutos: receta.carbohidratos,
     categoria: receta.categoria,
     cantidad: receta.cantidad,
-    source: receta.origen === 'personal' ? 'Tu recetario' : 'Recetario · comida típica',
+    source: 'Tu base de datos',
   }));
 
   renderResultadosBusqueda(resultados);
 }
 
 async function buscarEnBasesDeDatos(termino) {
+  ultimoTerminoBuscado = termino;
   const resultadosDiv = document.getElementById('resultadosComidasRegistradas');
   if (!resultadosDiv) return;
 
-  resultadosDiv.style.display = 'block';
-
-  // El recetario es local e instantáneo: lo mostramos primero mientras esperamos las APIs externas
   const coincidenciasRecetario = buscarEnRecetario(termino).map(({ receta }) => ({
     tipo: 'recetario',
+    id: receta.id,
     description: receta.nombre,
     carbohidratosAbsolutos: receta.carbohidratos,
     categoria: receta.categoria,
     cantidad: receta.cantidad,
-    source: receta.origen === 'personal' ? 'Tu recetario' : 'Recetario · comida típica',
+    source: 'Tu base de datos',
   }));
 
   renderResultadosBusqueda(coincidenciasRecetario);
@@ -213,7 +288,7 @@ async function buscarEnBasesDeDatos(termino) {
   ]);
 
   const resultadosExternos = [
-    ...(off.status === 'fulfilled' ? off.value : []),   // priorizamos Open Food Facts: mejor cobertura de productos argentinos
+    ...(off.status === 'fulfilled' ? off.value : []),
     ...(usda.status === 'fulfilled' ? usda.value : []),
   ].map((item) => ({ ...item, tipo: 'externo' }));
 
@@ -269,19 +344,22 @@ function renderResultadosBusqueda(resultados) {
   if (!resultadosDiv) return;
 
   if (!resultados.length) {
-    resultadosDiv.innerHTML = '<div style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">Sin resultados. Podés cargar el nombre y los gramos de carbohidratos a mano — queda guardado en tu recetario para la próxima.</div>';
+    resultadosDiv.innerHTML = '<div class="empty-state">Todavía no hay nada acá. Usá "+ Agregar" para empezar a construir tu base de datos.</div>';
     return;
   }
 
   resultadosDiv.innerHTML = resultados.map((item, i) => {
     const esRecetario = item.tipo === 'recetario';
     const detalle = esRecetario
-      ? `${item.carbohidratosAbsolutos} g de carbohidratos (porción típica)`
-      : `${item.carbs.toFixed(1)} g de carbohidratos por 100g`;
+      ? `${item.categoria ? item.categoria + ' · ' : ''}${item.cantidad ? item.cantidad + ' · ' : ''}${item.carbohidratosAbsolutos} g de carbohidratos`
+      : `${item.carbs.toFixed(1)} g de carbohidratos por 100g · ${item.source}`;
     return `
-      <div class="resultado-busqueda" data-index="${i}" style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem; ${esRecetario ? 'background: rgba(56, 189, 248, 0.05);' : ''}">
-        <div style="color: var(--text-main); font-weight: 600;">${esRecetario ? '📖 ' : ''}${item.description}</div>
-        <div style="color: var(--text-muted); font-size: 0.78rem;">${detalle} · <span style="color: var(--accent);">${item.source}</span></div>
+      <div class="resultado-busqueda" data-index="${i}" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.85rem; ${esRecetario ? 'background: rgba(56, 189, 248, 0.05);' : ''}">
+        <div style="flex: 1;">
+          <div style="color: var(--text-main); font-weight: 600;">${esRecetario ? '📖 ' : ''}${item.description}</div>
+          <div style="color: var(--text-muted); font-size: 0.78rem;">${detalle}</div>
+        </div>
+        ${esRecetario ? `<button type="button" class="entry-delete" data-eliminar="${item.id}" title="Eliminar de tu base">✕</button>` : ''}
       </div>
     `;
   }).join('');
@@ -289,7 +367,24 @@ function renderResultadosBusqueda(resultados) {
   resultadosDiv.querySelectorAll('.resultado-busqueda').forEach((el, i) => {
     el.addEventListener('mouseenter', () => { el.style.background = 'rgba(56, 189, 248, 0.12)'; });
     el.addEventListener('mouseleave', () => { el.style.background = resultados[i].tipo === 'recetario' ? 'rgba(56, 189, 248, 0.05)' : 'transparent'; });
-    el.addEventListener('click', () => seleccionarAlimento(resultados[i]));
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-eliminar]')) return;
+      seleccionarAlimento(resultados[i]);
+    });
+  });
+
+  resultadosDiv.querySelectorAll('[data-eliminar]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.eliminar;
+      if (!confirm('¿Eliminar esta comida de tu base de datos? No se puede deshacer.')) return;
+      eliminarReceta(id);
+      if (ultimoTerminoBuscado) {
+        buscarEnBasesDeDatos(ultimoTerminoBuscado);
+      } else {
+        mostrarTodoElRecetarioEnModal();
+      }
+    });
   });
 }
 
@@ -308,11 +403,13 @@ function seleccionarAlimento(item) {
   }
 
   if (item.tipo === 'recetario') {
-    // Valor absoluto de tu recetario: se carga directo, sin pedir gramos de porción
     carbsPor100gSeleccionado = null;
     ocultarCamposPorcion();
     if (inputCarbs) inputCarbs.value = item.carbohidratosAbsolutos;
-    if (selectCategoria && item.categoria) selectCategoria.value = item.categoria;
+    if (selectCategoria && item.categoria) {
+      poblarSelectCategorias();
+      selectCategoria.value = item.categoria;
+    }
     if (inputCantidad && item.cantidad) inputCantidad.value = item.cantidad;
     return;
   }
@@ -354,117 +451,13 @@ function calcularCarbohidratosDesdePorcion() {
   inputCarbs.value = Math.round(carbsCalculados * 10) / 10;
 }
 
-// --- Lector de código de barras (ZXing + Open Food Facts) ---
-
-function inicializarScanner() {
-  const btn = document.getElementById('btnEscanearCodigo');
-  const modal = document.getElementById('modalScanner');
-  const btnCerrar = document.getElementById('btnCerrarScanner');
-  if (!btn || !modal || !btnCerrar) return;
-
-  btn.addEventListener('click', () => {
-    modal.classList.add('active');
-    iniciarLecturaCodigoBarras();
-  });
-
-  btnCerrar.addEventListener('click', () => {
-    detenerScanner();
-    modal.classList.remove('active');
-  });
-}
-
-async function iniciarLecturaCodigoBarras() {
-  const estado = document.getElementById('estadoScanner');
-
-  if (typeof ZXing === 'undefined') {
-    if (estado) estado.textContent = 'No se pudo cargar el lector de códigos (revisá tu conexión a internet).';
-    return;
-  }
-
-  if (estado) estado.textContent = 'Apuntá la cámara al código de barras del producto.';
-
-  try {
-    zxingReader = new ZXing.BrowserMultiFormatReader();
-
-    // Pedimos la cámara trasera directamente (facingMode), sin enumerar
-    // dispositivos primero — ese paso de más puede romper la conexión
-    // entre el toque del botón y el pedido de cámara en iOS/WebKit,
-    // haciendo que el permiso se rechace solo.
-    const constraints = { video: { facingMode: { ideal: 'environment' } } };
-
-    zxingReader.decodeFromConstraints(constraints, 'videoScanner', (resultado, error) => {
-      if (resultado) {
-        const codigo = resultado.getText();
-        detenerScanner();
-        document.getElementById('modalScanner').classList.remove('active');
-        procesarCodigoBarras(codigo);
-      }
-    });
-  } catch (e) {
-    console.error('Error iniciando el escáner:', e);
-    if (estado) estado.textContent = 'No se pudo acceder a la cámara. Revisá los permisos del navegador.';
-  }
-}
-
-function detenerScanner() {
-  if (zxingReader) {
-    try { zxingReader.reset(); } catch (e) { /* no-op */ }
-    zxingReader = null;
-  }
-}
-
-async function procesarCodigoBarras(codigo) {
-  const resultadosDiv = document.getElementById('resultadosComidasRegistradas');
-  const modal = document.getElementById('modalComidasRegistradas');
-  if (modal) {
-    modal.classList.add('active');
-    modal.style.display = 'flex';
-  }
-  if (resultadosDiv) {
-    resultadosDiv.innerHTML = `<div style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">Buscando producto con código ${codigo} en Open Food Facts...</div>`;
-  }
-
-  try {
-    const resp = await fetch(`${OFF_PRODUCT_URL}/${codigo}.json`);
-    const data = await resp.json();
-
-    if (data.status !== 1 || !data.product) {
-      if (resultadosDiv) resultadosDiv.innerHTML = '<div style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">No se encontró ningún producto con ese código en Open Food Facts. Podés cargarlo a mano.</div>';
-      return;
-    }
-
-    const nombre = data.product.product_name || data.product.generic_name || `Producto ${codigo}`;
-    const carbs = data.product.nutriments ? data.product.nutriments.carbohydrates_100g : null;
-
-    document.getElementById('inputCategoriaComida').value = nombre;
-
-    if (carbs === null || carbs === undefined) {
-      if (resultadosDiv) resultadosDiv.innerHTML = `<div style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">Encontramos "${nombre}" pero no tiene datos de carbohidratos cargados en Open Food Facts. Completalo a mano.</div>`;
-      return;
-    }
-
-    carbsPor100gSeleccionado = carbs;
-    if (modal) {
-      modal.classList.remove('active');
-      modal.style.display = 'none';
-    }
-    mostrarCamposPorcion(carbs, 'Open Food Facts (código de barras)');
-  } catch (e) {
-    console.error('Error consultando Open Food Facts:', e);
-    if (resultadosDiv) resultadosDiv.innerHTML = '<div style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">No se pudo conectar con Open Food Facts.</div>';
-  }
-}
-
-// --- Alta de eventos ---
-
 function guardarNuevoEvento() {
-  const categoria = document.getElementById('inputCategoriaComida').value.trim(); // nombre de la comida (ej. "Milanesa")
-  const tipoCategoria = document.getElementById('selectCategoriaComida').value; // categoría del recetario (ej. "Carnes")
-  const cantidad = document.getElementById('inputCantidad').value.trim(); // porción (ej. "1 plato", "150g")
+  const categoria = document.getElementById('inputCategoriaComida').value.trim();
+  const tipoCategoria = document.getElementById('selectCategoriaComida').value;
+  const cantidad = document.getElementById('inputCantidad').value.trim();
   const momentoDia = document.getElementById('selectMomentoDia').value;
   const fechaHora = document.getElementById('inputFechaHora').value;
   const carbohidratos = parseFloat(document.getElementById('inputCarbohidratos').value);
-  const kcal = parseFloat(document.getElementById('inputKcal').value);
   const insulinaAplicada = parseFloat(document.getElementById('inputInsulinaAplicada').value);
   const glucosaPre = parseFloat(document.getElementById('inputGlucosaPre').value);
   const notas = document.getElementById('inputNotas').value.trim();
@@ -483,7 +476,6 @@ function guardarNuevoEvento() {
     momentoDia,
     fechaHora,
     carbohidratos,
-    kcal: isNaN(kcal) ? null : kcal,
     insulinaAplicada,
     glucosaPre,
     glucosaPost1h: null,
@@ -499,7 +491,6 @@ function guardarNuevoEvento() {
   guardarEventos(eventos);
   if (estaLogueado()) guardarDocEnNube('eventos', evento);
 
-  // Recetario: si ya existe algo parecido, solo suma un uso; si no, lo agrega como receta nueva
   registrarUsoOCrear(categoria, carbohidratos, tipoCategoria, cantidad);
 
   document.getElementById('formNuevoEvento').reset();
@@ -512,8 +503,6 @@ function guardarNuevoEvento() {
 
   renderTodo();
 }
-
-// --- Completar controles pendientes ---
 
 function guardarControl(id, campo, valor) {
   const eventos = cargarEventos();
@@ -539,8 +528,6 @@ function eliminarEvento(id) {
   renderTodo();
 }
 
-// --- Análisis con IA (vía proxy propio en Vercel) ---
-
 function inicializarAnalisisIA() {
   const btnAnalizar = document.getElementById('btnAnalizarIA');
   const btnUsar = document.getElementById('btnUsarResultadoIA');
@@ -560,11 +547,6 @@ async function analizarConIA() {
 
   if (!descripcion) {
     alert('Describí qué comiste antes de analizar.');
-    return;
-  }
-
-  if (PROXY_IA_URL.includes('TU-PROYECTO')) {
-    alert('Todavía no configuraste la URL de tu proxy de IA. Revisá la constante PROXY_IA_URL en registro.js.');
     return;
   }
 
@@ -604,7 +586,6 @@ function renderResultadoIA(resultado) {
 
   document.getElementById('iaCategoria').textContent = resultado.categoria || '—';
   document.getElementById('iaCarbs').textContent = `${resultado.carbohidratos_g ?? '--'} g`;
-  document.getElementById('iaKcal').textContent = `${resultado.kcal ?? '--'} kcal`;
   document.getElementById('iaConfianza').textContent = resultado.confianza || '—';
   document.getElementById('iaNotas').textContent = resultado.notas || '';
 
@@ -622,13 +603,10 @@ function aplicarResultadoIA() {
 
   const inputCategoria = document.getElementById('inputCategoriaComida');
   const inputCarbs = document.getElementById('inputCarbohidratos');
-  const inputKcal = document.getElementById('inputKcal');
 
   if (inputCategoria && ultimoResultadoIA.categoria) inputCategoria.value = ultimoResultadoIA.categoria;
   if (inputCarbs && typeof ultimoResultadoIA.carbohidratos_g === 'number') inputCarbs.value = ultimoResultadoIA.carbohidratos_g;
-  if (inputKcal && typeof ultimoResultadoIA.kcal === 'number') inputKcal.value = ultimoResultadoIA.kcal;
 
-  // Al venir de la IA (estimación), invalidamos cualquier selección previa de USDA/OFF
   carbsPor100gSeleccionado = null;
   ocultarCamposPorcion();
 }
@@ -668,7 +646,6 @@ function renderTarjetaEvento(evento, mostrarAcciones) {
     renderPuntoGlucosa('+2h', evento.glucosaPost2h, evento.id, 'glucosaPost2h'),
     renderPuntoGlucosa('+3h', evento.glucosaPost3h, evento.id, 'glucosaPost3h'),
   ];
-  // El punto "Pre" siempre está lleno (es obligatorio al cargar), lo forzamos:
   puntos[0] = `
     <div class="glucose-point filled">
       <span class="gp-label">Pre</span>
@@ -686,7 +663,6 @@ function renderTarjetaEvento(evento, mostrarAcciones) {
       </div>
       <div class="event-card-stats">
         <span>Carbs: <strong>${evento.carbohidratos} g</strong></span>
-        ${evento.kcal ? `<span>Kcal: <strong>${evento.kcal}</strong></span>` : ''}
         <span>Insulina: <strong>${evento.insulinaAplicada} U</strong></span>
       </div>
       <div class="glucose-points">
@@ -727,88 +703,181 @@ function renderTodo() {
   }
 }
 
-// --- Registro Manual de Comidas ---
-
-function inicializarRegistroManual() {
-  const selectCategoriaManual = document.getElementById('selectCategoriaManual');
-  if (selectCategoriaManual) {
-    selectCategoriaManual.innerHTML = CATEGORIAS_COMIDA.map((cat) => `<option value="${cat}">${cat}</option>`).join('');
-  }
-
-  const btnGuardarManual = document.getElementById('btnGuardarManual');
-  if (btnGuardarManual) {
-    btnGuardarManual.addEventListener('click', guardarComidaManual);
-  }
-
-  renderRecetarioManual();
-}
-
-function guardarComidaManual() {
-  const nombre = document.getElementById('inputNombreManual').value.trim();
-  const categoria = document.getElementById('selectCategoriaManual').value;
-  const cantidad = document.getElementById('inputCantidadManual').value.trim();
-  const carbohidratos = parseFloat(document.getElementById('inputCarbohidratosManual').value);
-
-  if (!nombre || isNaN(carbohidratos)) {
-    alert('Completá al menos el nombre de la comida y los carbohidratos.');
-    return;
-  }
-
-  const resultado = agregarOActualizarManual(nombre, categoria, cantidad, carbohidratos);
-
-  document.getElementById('inputNombreManual').value = '';
-  document.getElementById('inputCantidadManual').value = '';
-  document.getElementById('inputCarbohidratosManual').value = '';
-
-  renderRecetarioManual();
-
-  if (resultado.actualizada) {
-    alert(`Ya tenías algo parecido a "${nombre}" guardado — actualicé sus datos en vez de crear una entrada duplicada.`);
-  }
-}
-
-function renderRecetarioManual() {
-  const contenedor = document.getElementById('listaRecetarioManual');
-  if (!contenedor) return;
-
-  const recetario = cargarRecetario()
-    .slice()
-    .sort((a, b) => a.nombre.localeCompare(b.nombre));
-
-  if (!recetario.length) {
-    contenedor.innerHTML = '<div class="empty-state">Todavía no hay comidas en tu base de datos.</div>';
-    return;
-  }
-
-  contenedor.innerHTML = `
-    <div class="section-title" style="font-size: 0.85rem;">Tu base de datos (${recetario.length})</div>
-    <div class="ins-day">
-      <table class="ins-tabla">
-        <tbody>
-          ${recetario.map((r) => `
-            <tr>
-              <td class="ins-td-notas" style="font-weight: 600; color: var(--text-main);">${r.nombre}</td>
-              <td class="ins-td-notas">${r.categoria || ''}</td>
-              <td class="ins-td-notas">${r.cantidad || ''}</td>
-              <td class="ins-td-unidades">${r.carbohidratos} g</td>
-              <td class="ins-td-accion"><button class="entry-delete" onclick="eliminarRecetaManual('${r.id}')" title="Eliminar">✕</button></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-function eliminarRecetaManual(id) {
-  if (!confirm('¿Eliminar esta comida de tu base de datos? No se puede deshacer.')) return;
-  eliminarReceta(id);
-  renderRecetarioManual();
-}
-
-// Los módulos ES no exponen funciones al scope global automáticamente,
-// pero el HTML generado usa onclick="eliminarEvento(...)" y
-// onchange="guardarControl(...)" — hace falta colgarlas de window.
 window.eliminarEvento = eliminarEvento;
 window.guardarControl = guardarControl;
-window.eliminarRecetaManual = eliminarRecetaManual;
+
+// ============================================================================
+// LECTOR DE CÓDIGO DE BARRAS — DESACTIVADO a pedido del usuario.
+// El HTML correspondiente (botón + modal + script de ZXing) también está
+// comentado en registro.html. Para reactivarlo:
+//   1) Descomentar el bloque de HTML en registro.html
+//   2) Descomentar el bloque de JS acá abajo
+//   3) Agregar de nuevo `buscarPorCodigoBarras, guardarConCodigoBarras` al
+//      import de recetario.js al principio de este archivo
+//   4) Llamar a inicializarScanner() dentro de inicializarComidasRegistradas()
+// ============================================================================
+
+/*
+let zxingReader = null;
+
+function inicializarScanner() {
+  const btn = document.getElementById('btnEscanearCodigo');
+  const modal = document.getElementById('modalScanner');
+  const btnCerrar = document.getElementById('btnCerrarScanner');
+  if (!btn || !modal || !btnCerrar) return;
+
+  btn.addEventListener('click', () => {
+    modal.classList.add('active');
+    iniciarLecturaCodigoBarras();
+  });
+
+  btnCerrar.addEventListener('click', () => {
+    detenerScanner();
+    modal.classList.remove('active');
+  });
+}
+
+async function iniciarLecturaCodigoBarras() {
+  const estado = document.getElementById('estadoScanner');
+
+  if (typeof ZXing === 'undefined') {
+    if (estado) estado.textContent = 'No se pudo cargar el lector de códigos (revisá tu conexión a internet).';
+    return;
+  }
+
+  if (estado) estado.textContent = 'Apuntá la cámara al código de barras del producto.';
+
+  try {
+    zxingReader = new ZXing.BrowserMultiFormatReader();
+    const constraints = { video: { facingMode: { ideal: 'environment' } } };
+
+    zxingReader.decodeFromConstraints(constraints, 'videoScanner', (resultado, error) => {
+      if (resultado) {
+        const codigo = resultado.getText();
+        detenerScanner();
+        document.getElementById('modalScanner').classList.remove('active');
+        procesarCodigoBarras(codigo);
+      }
+    });
+  } catch (e) {
+    console.error('Error iniciando el escáner:', e);
+    if (estado) estado.textContent = 'No se pudo acceder a la cámara. Revisá los permisos del navegador.';
+  }
+}
+
+function detenerScanner() {
+  if (zxingReader) {
+    try { zxingReader.reset(); } catch (e) { }
+    zxingReader = null;
+  }
+}
+
+const OFF_PRODUCT_URL = 'https://world.openfoodfacts.org/api/v0/product';
+
+async function procesarCodigoBarras(codigo) {
+  const resultadosDiv = document.getElementById('resultadosComidasRegistradas');
+  const modal = document.getElementById('modalComidasRegistradas');
+  if (modal) {
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+  }
+
+  const enMiBase = buscarPorCodigoBarras(codigo);
+  if (enMiBase) {
+    seleccionarAlimento({
+      tipo: 'recetario',
+      description: enMiBase.nombre,
+      carbohidratosAbsolutos: enMiBase.carbohidratos,
+      categoria: enMiBase.categoria,
+      cantidad: enMiBase.cantidad,
+    });
+    return;
+  }
+
+  if (resultadosDiv) {
+    resultadosDiv.innerHTML = `<div style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">Buscando producto con código ${codigo} en Open Food Facts...</div>`;
+  }
+
+  try {
+    const resp = await fetch(`${OFF_PRODUCT_URL}/${codigo}.json`);
+    const data = await resp.json();
+
+    const encontroProducto = data.status === 1 && data.product;
+    const nombre = encontroProducto ? (data.product.product_name || data.product.generic_name || `Producto ${codigo}`) : '';
+    const carbs = encontroProducto && data.product.nutriments ? data.product.nutriments.carbohydrates_100g : null;
+
+    if (encontroProducto && carbs !== null && carbs !== undefined) {
+      document.getElementById('inputCategoriaComida').value = nombre;
+      carbsPor100gSeleccionado = carbs;
+      if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+      }
+      mostrarCamposPorcion(carbs, 'Open Food Facts (código de barras)');
+      return;
+    }
+
+    mostrarFormularioCodigoNoEncontrado(codigo, nombre);
+  } catch (e) {
+    console.error('Error consultando Open Food Facts:', e);
+    mostrarFormularioCodigoNoEncontrado(codigo, '');
+  }
+}
+
+function mostrarFormularioCodigoNoEncontrado(codigo, nombreSugerido) {
+  const resultadosDiv = document.getElementById('resultadosComidasRegistradas');
+  if (!resultadosDiv) return;
+
+  resultadosDiv.innerHTML = `
+    <div style="padding: 4px;">
+      <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px;">
+        No encontramos datos completos para el código <strong>${codigo}</strong>. Completalo una vez y lo guardamos en tu base.
+      </p>
+      <div class="form-group" style="margin-bottom: 10px;">
+        <label>Nombre</label>
+        <input type="text" id="inputNombreCodigoNuevo" value="${nombreSugerido || ''}" placeholder="Ej. Galletitas Traviata">
+      </div>
+      <div class="form-group" style="margin-bottom: 10px;">
+        <label>Categoría</label>
+        <select id="selectCategoriaCodigoNuevo"></select>
+      </div>
+      <div class="form-group" style="margin-bottom: 10px;">
+        <label>Cantidad / porción</label>
+        <input type="text" id="inputCantidadCodigoNuevo" placeholder="Ej. 1 paquete, 5 galletitas">
+      </div>
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label>Carbohidratos (g)</label>
+        <input type="number" id="inputCarbsCodigoNuevo" min="0" step="1" placeholder="Ej. 19">
+      </div>
+      <button type="button" id="btnGuardarCodigoNuevo" class="btn" style="width: 100%;">Guardar en mi base con este código</button>
+    </div>
+  `;
+
+  const selectCategoria = document.getElementById('selectCategoriaCodigoNuevo');
+  if (selectCategoria) {
+    selectCategoria.innerHTML = obtenerCategorias().map((cat) => `<option value="${cat}">${cat}</option>`).join('');
+  }
+
+  document.getElementById('btnGuardarCodigoNuevo')?.addEventListener('click', () => {
+    const nombre = document.getElementById('inputNombreCodigoNuevo').value.trim();
+    const categoria = document.getElementById('selectCategoriaCodigoNuevo').value;
+    const cantidad = document.getElementById('inputCantidadCodigoNuevo').value.trim();
+    const carbohidratos = parseFloat(document.getElementById('inputCarbsCodigoNuevo').value);
+
+    if (!nombre || isNaN(carbohidratos)) {
+      alert('Completá al menos el nombre y los carbohidratos.');
+      return;
+    }
+
+    const nueva = guardarConCodigoBarras(nombre, categoria, cantidad, carbohidratos, codigo);
+
+    seleccionarAlimento({
+      tipo: 'recetario',
+      description: nueva.nombre,
+      carbohidratosAbsolutos: nueva.carbohidratos,
+      categoria: nueva.categoria,
+      cantidad: nueva.cantidad,
+    });
+  });
+}
+*/

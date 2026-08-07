@@ -15,14 +15,49 @@
 const RECETARIO_KEY = 'dbtycs_recetario';
 const UMBRAL_SIMILITUD = 0.78; // 0 a 1. Más alto = exige coincidencia más exacta.
 
-export const CATEGORIAS_COMIDA = [
+const CATEGORIAS_BASE = [
   'Pastas', 'Carnes', 'Pollo y Aves', 'Pescados y Mariscos', 'Panificados',
   'Lácteos', 'Frutas', 'Verduras y Ensaladas', 'Legumbres', 'Arroz y Cereales',
   'Snacks y Frituras', 'Dulces y Postres', 'Bebidas', 'Otro',
 ];
 
-// --- Comidas argentinas típicas precargadas ---
+const CATEGORIAS_CUSTOM_KEY = 'dbtycs_categorias_custom';
+
+// Devuelve las categorías base + las que el usuario fue creando con el botón "+"
+export function obtenerCategorias() {
+  let custom = [];
+  try {
+    custom = JSON.parse(localStorage.getItem(CATEGORIAS_CUSTOM_KEY) || '[]');
+  } catch (e) {
+    console.error('No se pudieron leer las categorías personalizadas:', e);
+  }
+  return [...CATEGORIAS_BASE, ...custom];
+}
+
+// Agrega una categoría nueva creada por el usuario. Devuelve la lista actualizada.
+export function agregarCategoria(nombre) {
+  const limpio = nombre.trim();
+  if (!limpio) return obtenerCategorias();
+
+  let custom = [];
+  try {
+    custom = JSON.parse(localStorage.getItem(CATEGORIAS_CUSTOM_KEY) || '[]');
+  } catch (e) {
+    custom = [];
+  }
+
+  const yaExiste = [...CATEGORIAS_BASE, ...custom].some((c) => normalizarTexto(c) === normalizarTexto(limpio));
+  if (!yaExiste) {
+    custom.push(limpio);
+    localStorage.setItem(CATEGORIAS_CUSTOM_KEY, JSON.stringify(custom));
+  }
+  return obtenerCategorias();
+}
+
+// --- Comidas argentinas típicas — YA NO SE USAN PARA PRECARGAR (ver cargarRecetario) ---
+// Se deja comentado el listado por si en algún momento se quiere reactivar la precarga.
 // [nombre, carbohidratos (g), categoría, cantidad/porción]
+/*
 const RECETAS_PRECARGADAS = [
   ['Milanesa de carne (sola)', 5, 'Carnes', '1 unidad'],
   ['Milanesa de carne con puré', 45, 'Carnes', '1 porción'],
@@ -74,6 +109,7 @@ const RECETAS_PRECARGADAS = [
   ['Helado', 35, 'Dulces y Postres', '2 bochas'],
   ['Fruta', 20, 'Frutas', '1 unidad mediana'],
 ];
+*/
 
 // --- Normalización y similitud de texto ---
 
@@ -132,19 +168,11 @@ export function cargarRecetario() {
     console.error('No se pudo leer el recetario:', e);
   }
 
-  // Primera vez: sembramos el recetario con las comidas precargadas
-  const inicial = RECETAS_PRECARGADAS.map(([nombre, carbohidratos, categoria, cantidad]) => ({
-    id: generarIdReceta(),
-    nombre,
-    categoria,
-    cantidad,
-    carbohidratos,
-    vecesUsada: 0,
-    origen: 'precargada',
-    creadoEn: new Date().toISOString(),
-  }));
-  localStorage.setItem(RECETARIO_KEY, JSON.stringify(inicial));
-  return inicial;
+  // Ya no se siembra con comidas precargadas — arranca vacío, el usuario
+  // arma su propia base desde cero. RECETAS_PRECARGADAS queda arriba sin
+  // usarse, comentada, por si en algún momento se quiere reactivar.
+  localStorage.setItem(RECETARIO_KEY, JSON.stringify([]));
+  return [];
 }
 
 export function guardarRecetarioCompleto(lista) {
@@ -158,6 +186,31 @@ export function buscarEnRecetario(termino, minimo = UMBRAL_SIMILITUD) {
     .map((receta) => ({ receta, score: similitud(termino, receta.nombre) }))
     .filter((r) => r.score >= minimo)
     .sort((a, b) => b.score - a.score);
+}
+
+// Busca una receta por código de barras exacto (para el escáner)
+export function buscarPorCodigoBarras(codigo) {
+  if (!codigo) return null;
+  const recetario = cargarRecetario();
+  return recetario.find((r) => r.codigoBarras === codigo) || null;
+}
+
+export function guardarConCodigoBarras(nombre, categoria, cantidad, carbohidratos, codigoBarras) {
+  const recetario = cargarRecetario();
+  const nueva = {
+    id: generarIdReceta(),
+    nombre,
+    categoria: categoria || 'Otro',
+    cantidad: cantidad || null,
+    carbohidratos,
+    codigoBarras: codigoBarras || null,
+    vecesUsada: 1,
+    origen: 'personal',
+    creadoEn: new Date().toISOString(),
+  };
+  recetario.push(nueva);
+  guardarRecetarioCompleto(recetario);
+  return nueva;
 }
 
 // Se llama desde el "Registro Manual de Comidas": agrega una receta nueva a
