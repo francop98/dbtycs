@@ -46,12 +46,28 @@ export async function sincronizarPerfil() {
   if (!uid) return null;
 
   const perfilNube = await cargarPerfilDeNube();
+  const perfilLocal = JSON.parse(localStorage.getItem('dbtycs_perfil') || 'null');
+
+  if (perfilNube && perfilLocal) {
+    const fechaNube = new Date(perfilNube.actualizadoEn || 0).getTime();
+    const fechaLocal = new Date(perfilLocal.actualizadoEn || 0).getTime();
+
+    if (fechaLocal > fechaNube) {
+      // El perfil local es más nuevo (ej: lo editaste y todavía no había subido) — gana y se sube
+      await guardarPerfilEnNube(perfilLocal);
+      return perfilLocal;
+    }
+
+    // La nube es igual o más nueva: se baja
+    localStorage.setItem('dbtycs_perfil', JSON.stringify(perfilNube));
+    return perfilNube;
+  }
+
   if (perfilNube) {
     localStorage.setItem('dbtycs_perfil', JSON.stringify(perfilNube));
     return perfilNube;
   }
 
-  const perfilLocal = JSON.parse(localStorage.getItem('dbtycs_perfil') || 'null');
   if (perfilLocal) {
     await guardarPerfilEnNube(perfilLocal);
   }

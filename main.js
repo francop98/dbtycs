@@ -8,7 +8,8 @@ import {
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { auth } from "./js/firebase-init.js";
 import { guardarPerfilEnNube, sincronizarPerfil } from "./js/firestore-sync.js";
@@ -43,6 +44,7 @@ const chkRememberMe = document.getElementById("chkRememberMe");
 
 const mensajeLoginError = document.getElementById("mensajeLoginError");
 const mensajeRegError = document.getElementById("mensajeRegError");
+const linkOlvideContrasena = document.getElementById("linkOlvideContrasena");
 const saludoUsuario = document.getElementById("saludoUsuario");
 const btnCerrarSesion = document.getElementById("btnCerrarSesion");
 const btnAbrirAuth = document.getElementById("btnAbrirAuth");
@@ -57,17 +59,24 @@ const modalFSI = document.getElementById("modalFSI");
 // ==========================================
 // 3. EVENTOS: MOSTRAR / OCULTAR CONTRASEÑA
 // ==========================================
+const ICONO_OJO_ABIERTO = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+const ICONO_OJO_TACHADO = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+
 function togglePasswordVisibility(inputElement, buttonElement) {
   if (inputElement.type === "password") {
     inputElement.type = "text";
-    buttonElement.textContent = "🙈"; // Clave al descubierto -> Ojo oculto/tachado
+    buttonElement.innerHTML = ICONO_OJO_TACHADO; // Clave visible -> mostramos el ojo tachado para ocultarla
     buttonElement.setAttribute("aria-label", "Ocultar contraseña");
   } else {
     inputElement.type = "password";
-    buttonElement.textContent = "👁️"; // Clave oculta -> Ojo abierto
+    buttonElement.innerHTML = ICONO_OJO_ABIERTO; // Clave oculta -> mostramos el ojo para revelarla
     buttonElement.setAttribute("aria-label", "Mostrar contraseña");
   }
 }
+
+// Ícono inicial (ambos campos arrancan como password)
+if (btnToggleLoginPassword) btnToggleLoginPassword.innerHTML = ICONO_OJO_ABIERTO;
+if (btnToggleRegPassword) btnToggleRegPassword.innerHTML = ICONO_OJO_ABIERTO;
 
 if (btnToggleLoginPassword && loginPassword) {
   btnToggleLoginPassword.addEventListener("click", () => {
@@ -266,6 +275,15 @@ window.addEventListener("click", (e) => {
 function mostrarError(elemento, mensaje) {
   if (elemento) {
     elemento.textContent = mensaje;
+    elemento.style.color = "#f87171";
+    elemento.style.display = "block";
+  }
+}
+
+function mostrarExito(elemento, mensaje) {
+  if (elemento) {
+    elemento.textContent = mensaje;
+    elemento.style.color = "#4ade80";
     elemento.style.display = "block";
   }
 }
@@ -276,6 +294,42 @@ function ocultarError(elemento) {
     elemento.style.display = "none";
   }
 }
+
+// ==========================================
+// 8.1. RESTABLECER CONTRASEÑA
+// ==========================================
+window.dbtycsOlvideContrasena = function (e) {
+  if (e) e.preventDefault();
+
+  const elMensaje = document.getElementById("mensajeLoginError");
+  const elEmail = document.getElementById("loginEmail");
+
+  // Confirmación inmediata y visible de que el clic se registró,
+  // ANTES de tocar Firebase — si esto no aparece, el problema es
+  // el clic en sí (ej. algo tapando el link), no Firebase.
+  if (elMensaje) {
+    elMensaje.style.color = "#38bdf8";
+    elMensaje.style.display = "block";
+    elMensaje.textContent = "Procesando...";
+  }
+
+  const email = elEmail ? elEmail.value.trim() : '';
+  if (!email) {
+    mostrarError(elMensaje, "Ingresá tu correo electrónico arriba y volvé a tocar el enlace para recibir el mail de recuperación.");
+    return false;
+  }
+
+  sendPasswordResetEmail(auth, email)
+    .then(() => {
+      mostrarExito(elMensaje, `Te enviamos un correo a ${email} con el enlace para restablecer tu contraseña.`);
+    })
+    .catch((error) => {
+      console.error("Error al enviar el correo de recuperación:", error);
+      mostrarError(elMensaje, obtenerMensajeError(error.code));
+    });
+
+  return false;
+};
 
 function obtenerMensajeError(codigo) {
   switch (codigo) {
@@ -658,6 +712,9 @@ function obtenerItemsFichaMedica() {
   const edadCalculada = calcularEdad(fechaNac);
   const textoEdad = edadCalculada !== null ? `${edadCalculada} años` : (perfil.edad ? `${perfil.edad} años` : 'No especificado');
 
+  const antiguedadDiagnostico = calcularEdad(perfil.fechaDiagnostico);
+  const textoAntiguedad = antiguedadDiagnostico !== null ? `${antiguedadDiagnostico} años` : 'No especificado';
+
   const textosActividad = {
     sedentario: 'Sedentario',
     ligero: 'Ligeramente activo',
@@ -669,6 +726,8 @@ function obtenerItemsFichaMedica() {
     { label: 'Nombre Completo', val: perfil.nombre || 'No especificado' },
     { label: 'Edad', val: textoEdad },
     { label: 'Tipo de Diabetes', val: perfil.tipoDiabetes || 'No especificado' },
+    { label: 'Fecha de Diagnóstico', val: perfil.fechaDiagnostico || 'No especificado' },
+    { label: 'Años con Diabetes', val: textoAntiguedad },
     { label: 'Altura', val: perfil.altura ? `${perfil.altura} cm` : 'No especificado' },
     { label: 'Peso Corporal', val: perfil.peso ? `${perfil.peso} kg` : 'No especificado' },
     { label: 'Actividad / Ocupación', val: textosActividad[perfil.trabajo] || 'No especificado' },

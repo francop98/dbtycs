@@ -76,6 +76,12 @@
         <div class="desc">Cargá tus comidas y controles de glucosa para afinar tu ratio y FSI.</div>
       </div>
 
+      <!-- Card Análisis de Sangre -->
+      <div class="link-card" onclick="window.location.href='pages/analisis.html'">
+        <div class="title">🩸 Análisis de Sangre</div>
+        <div class="desc">Cargá tus resultados de laboratorio y mirá su evolución en el tiempo.</div>
+      </div>
+
       <!-- Card Consejos -->
       <div class="link-card" onclick="window.location.href='pages/consejos.html'">
         <div class="title">💡 Consejos</div>
@@ -159,7 +165,7 @@
           <input type="checkbox" id="chkRememberMe" checked style="accent-color: var(--accent); cursor: pointer;">
           Mantener sesión iniciada
         </label>
-        <a href="#" id="linkOlvideContrasena" style="font-size: 0.8rem; color: var(--accent); text-decoration: none;">¿Olvidaste tu contraseña?</a>
+        <a href="#" id="linkOlvideContrasena" onclick="return window.dbtycsOlvideContrasena(event);" style="font-size: 0.8rem; color: var(--accent); text-decoration: none;">¿Olvidaste tu contraseña?</a>
       </div>
 
       <p id="mensajeLoginError" style="font-size: 0.8rem; color: #f87171; display: none; margin-bottom: 12px; line-height: 1.3;"></p>

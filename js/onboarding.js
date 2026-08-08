@@ -231,6 +231,9 @@ function renderResumen() {
   const fechaNac = getVal('fechaNacimiento');
   const edad = calcularEdad(fechaNac);
 
+  const fechaDiag = getVal('fechaDiagnostico');
+  const antiguedadDiagnostico = calcularEdad(fechaDiag); // reutilizamos la misma cuenta de años
+
   const rMin = getVal('rangoMin') || '70';
   const rMax = getVal('rangoMax') || '180';
   const ratio = getVal('ratioIC');
@@ -242,7 +245,7 @@ function renderResumen() {
     ['Peso', getVal('peso') ? `${getVal('peso')} kg` : ''],
     ['Altura', getVal('altura') ? `${getVal('altura')} cm` : ''],
     ['Diagnóstico', etiquetasTipo[seleccion.tipoDiabetes] || ''],
-    ['Año de diagnóstico', getVal('anioDiagnostico') || ''],
+    ['Fecha de diagnóstico', fechaDiag ? `${fechaDiag} (hace ${antiguedadDiagnostico !== null ? antiguedadDiagnostico + ' años' : '—'})` : 'Sin definir'],
     ['Método', etiquetasMetodo[seleccion.metodo] || ''],
     ['Insulina basal', getVal('insulinaBasal') || ''],
     ['Insulina rápida', getVal('insulinaRapida') || ''],
@@ -278,7 +281,7 @@ async function guardarPerfil() {
     peso: getVal('peso') ? Number(getVal('peso')) : null,
     altura: getVal('altura') ? Number(getVal('altura')) : null,
     tipoDiabetes: seleccion.tipoDiabetes,
-    anioDiagnostico: getVal('anioDiagnostico') || null,
+    fechaDiagnostico: getVal('fechaDiagnostico') || null,
     metodo: seleccion.metodo,
     insulinaBasal: getVal('insulinaBasal') || null,
     insulinaRapida: getVal('insulinaRapida') || null,
@@ -323,7 +326,7 @@ function precargarPerfilExistente(perfilForzado) {
     setVal('fechaNacimiento', perfil.fechaNacimiento);
     setVal('peso', perfil.peso);
     setVal('altura', perfil.altura);
-    setVal('anioDiagnostico', perfil.anioDiagnostico);
+    setVal('fechaDiagnostico', perfil.fechaDiagnostico);
     setVal('insulinaBasal', perfil.insulinaBasal);
     setVal('insulinaRapida', perfil.insulinaRapida);
     setVal('rangoMin', perfil.rangoObjetivo?.min ?? 70);
