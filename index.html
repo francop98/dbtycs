@@ -16,23 +16,28 @@
       <h1 id="saludoUsuario">Hola, Usuario</h1>
       <p>Panel de control principal de tu tratamiento.</p>
     </div>
-    <div style="display: flex; gap: 8px; align-items: center;">
-      <!-- Botón opcional para abrir el login/registro (sincronizar entre dispositivos) -->
-      <button id="btnAbrirAuth" title="Iniciar sesión o crear cuenta" style="background: var(--surface); border: 1px solid var(--border); color: var(--text-main); height: 42px; padding: 0 16px; border-radius: 21px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;">
-        Iniciar Sesión / Registrarse
-      </button>
-
-      <!-- Botón para Cerrar Sesión -->
-      <button id="btnCerrarSesion" title="Cerrar Sesión" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; height: 42px; padding: 0 14px; border-radius: 21px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
-        Salir
-      </button>
-
-      <!-- Botón de Configuración / Onboarding -->
-      <button onclick="window.location.href='pages/onboarding.html'" title="Configurar Perfil" style="background: var(--surface); border: 1px solid var(--border); color: var(--text-main); width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);">
-        ⚙️
-      </button>
-    </div>
   </header>
+
+  <!-- Navbar: Engranaje, Ficha Médica, Consejos, Salir/Iniciar Sesión -->
+  <nav style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 20px;">
+    <button onclick="window.location.href='pages/onboarding.html'" title="Configurar Perfil" class="btn btn-secondary" style="width: 40px; height: 40px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+      ⚙️
+    </button>
+    <button id="cardFichaMedica" class="btn btn-secondary" style="font-size: 0.85rem;">📋 Ficha Médica</button>
+    <button onclick="window.location.href='pages/consejos.html'" class="btn btn-secondary" style="font-size: 0.85rem;">💡 Consejos</button>
+
+    <div style="flex: 1;"></div>
+
+    <!-- Botón opcional para abrir el login/registro (sincronizar entre dispositivos) -->
+    <button id="btnAbrirAuth" title="Iniciar sesión o crear cuenta" style="background: #0f172a; border: 1px solid var(--border); color: var(--text-main); height: 40px; padding: 0 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;">
+      Iniciar Sesión / Registrarse
+    </button>
+
+    <!-- Botón para Cerrar Sesión -->
+    <button id="btnCerrarSesion" title="Cerrar Sesión" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; height: 40px; padding: 0 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
+      Salir
+    </button>
+  </nav>
 
   <!-- Insulina Activa: contador en vivo, no es un botón. Basal y rápida por separado, sin sumatoria total. -->
   <div class="card" style="margin-bottom: 24px;">
@@ -58,12 +63,6 @@
 
   <main>
     <div class="grid">
-      <!-- Card Ficha Médica -->
-      <div class="link-card" id="cardFichaMedica">
-        <div class="title">📋 Ficha Médica</div>
-        <div class="desc">Consulta o descarga tu resumen de perfil de salud.</div>
-      </div>
-
       <!-- Card Registro de Insulina -->
       <div class="link-card" onclick="window.location.href='pages/insulina.html'">
         <div class="title">🧾 Registro de Insulina</div>
@@ -80,12 +79,6 @@
       <div class="link-card" onclick="window.location.href='pages/analisis.html'">
         <div class="title">🩸 Análisis de Sangre</div>
         <div class="desc">Cargá tus resultados de laboratorio y mirá su evolución en el tiempo.</div>
-      </div>
-
-      <!-- Card Consejos -->
-      <div class="link-card" onclick="window.location.href='pages/consejos.html'">
-        <div class="title">💡 Consejos</div>
-        <div class="desc">Tips prácticos para el manejo diario de tu glucemia y bienestar.</div>
       </div>
 
       <!-- Card Histórico / Estadísticas -->

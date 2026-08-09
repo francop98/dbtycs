@@ -92,7 +92,7 @@ function guardarNuevaAplicacion() {
   if (estaLogueado()) guardarDocEnNube('insulina', aplicacion);
 
   document.getElementById('formNuevaInsulina').reset();
-  document.getElementById('selectTipoInsulina').value = 'basal';
+  document.getElementById('selectTipoInsulina').value = 'rapida';
   precargarFechaHoraInsulina();
 
   renderHistorialInsulina();
