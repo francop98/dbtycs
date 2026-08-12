@@ -487,32 +487,89 @@ header p {
 }
 
 /* ==========================================
-   REGISTRO DE INSULINA — modo listado/tabla
+   REGISTRO DE INSULINA — acordeón mes → día → datos
    ========================================== */
+.ins-month {
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.ins-month-header,
+.ins-day-header {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.ins-month-header {
+  background: var(--surface);
+  padding: 12px 14px;
+  font-size: 0.9rem;
+}
+
+.ins-month-header:hover {
+  background: var(--surface-hover);
+}
+
+.ins-month-name {
+  font-weight: 700;
+  color: var(--text-main);
+  text-transform: capitalize;
+  flex: 1;
+}
+
+.ins-month-body {
+  padding: 8px;
+  background: #0f172a;
+}
+
 .ins-day {
-  margin-bottom: 18px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ins-day:last-child {
+  margin-bottom: 0;
 }
 
 .ins-day-header {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  background: var(--bg);
-  padding: 8px 4px;
-  border-bottom: 2px solid var(--border);
-  margin-bottom: 2px;
+  background: var(--surface);
+  padding: 9px 12px;
+  font-size: 0.83rem;
+  border-radius: 8px;
+}
+
+.ins-day-header:hover {
+  background: var(--surface-hover);
+}
+
+.ins-day-body {
+  padding-top: 4px;
+}
+
+.ins-chevron {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  width: 12px;
 }
 
 .day-date {
   font-weight: 700;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   color: var(--text-main);
   text-transform: capitalize;
+  flex: 1;
 }
 
 .day-totals {
@@ -744,6 +801,17 @@ header p {
   select,
   textarea {
     font-size: 16px !important;
+  }
+
+  /* input[type=datetime-local] tiene un ancho mínimo interno en varios
+     navegadores mobile que puede superar el 100% del contenedor y
+     desbordar la pantalla — lo forzamos a respetar el ancho disponible. */
+  input[type="date"],
+  input[type="datetime-local"] {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   /* Tarjetas con menos padding para aprovechar el ancho */

@@ -1,8 +1,10 @@
 // ============================================================================
 // DBTYCS — Análisis de Sangre
-// Guarda cada análisis en localStorage['dbtycs_analisis'] como array de
-// objetos. Cada entrada es un análisis completo (fecha + los parámetros que
-// se hayan cargado). Sincroniza con Firestore cuando hay sesión iniciada.
+// Los PARÁMETROS (qué se mide) los define el usuario — no hay una lista fija.
+// Se guardan en localStorage['dbtycs_analisis_parametros'] como
+// [{ key, label, unidad }]. Cada análisis cargado (localStorage
+// ['dbtycs_analisis']) guarda un valor por parámetro que exista en ese
+// momento. Sincroniza con Firestore cuando hay sesión iniciada.
 // ============================================================================
 
 import { auth } from './firebase-init.js';
@@ -10,31 +12,16 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/fi
 import { guardarDocEnNube, eliminarDocDeNube, sincronizarColeccion, estaLogueado } from './firestore-sync.js';
 
 const ANALISIS_KEY = 'dbtycs_analisis';
+const PARAMETROS_KEY = 'dbtycs_analisis_parametros';
 
-const CAMPOS_ANALISIS = [
-  { key: 'hba1c', label: 'HbA1c (Hemoglobina Glicosilada)', unidad: '%', grupo: 'Control glucémico' },
-  { key: 'glucemiaAyunas', label: 'Glucemia en ayunas', unidad: 'mg/dL', grupo: 'Control glucémico' },
-  { key: 'colesterolTotal', label: 'Colesterol Total', unidad: 'mg/dL', grupo: 'Perfil lipídico' },
-  { key: 'colesterolHDL', label: 'Colesterol HDL', unidad: 'mg/dL', grupo: 'Perfil lipídico' },
-  { key: 'colesterolLDL', label: 'Colesterol LDL', unidad: 'mg/dL', grupo: 'Perfil lipídico' },
-  { key: 'trigliceridos', label: 'Triglicéridos', unidad: 'mg/dL', grupo: 'Perfil lipídico' },
-  { key: 'creatinina', label: 'Creatinina', unidad: 'mg/dL', grupo: 'Función renal' },
-  { key: 'microalbuminuria', label: 'Microalbuminuria', unidad: 'mg/L', grupo: 'Función renal' },
-  { key: 'peptidoC', label: 'Péptido C', unidad: 'ng/mL', grupo: 'Páncreas / Autoinmunidad' },
-  { key: 'antiGAD65', label: 'Anti-GAD65', unidad: 'UI/mL', grupo: 'Páncreas / Autoinmunidad' },
-  { key: 'antiIA2', label: 'Anti-IA2', unidad: 'UI/mL', grupo: 'Páncreas / Autoinmunidad' },
-  { key: 'tsh', label: 'TSH', unidad: 'µUI/mL', grupo: 'Tiroides' },
-  { key: 'vitaminaD', label: 'Vitamina D', unidad: 'ng/mL', grupo: 'Vitaminas' },
-  { key: 'vitaminaB12', label: 'Vitamina B12', unidad: 'pg/mL', grupo: 'Vitaminas' },
-];
-
-const COLORES_GRAFICO = ['#38bdf8', '#f472b6', '#4ade80', '#fb923c', '#a78bfa', '#facc15'];
+const COLORES_GRAFICO = ['#38bdf8', '#f472b6', '#4ade80', '#fb923c', '#a78bfa', '#facc15', '#2dd4bf', '#f87171'];
 let graficosActivos = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   precargarFecha();
   generarFormulario();
   renderTodo();
+  inicializarPanelParametro();
 
   const form = document.getElementById('formNuevoAnalisis');
   if (form) {
@@ -54,6 +41,88 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function generarId() {
   return `ana_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function cargarParametros() {
+  try {
+    const guardado = localStorage.getItem(PARAMETROS_KEY);
+    return guardado ? JSON.parse(guardado) : [];
+  } catch (e) {
+    console.error('No se pudieron leer los parámetros:', e);
+    return [];
+  }
+}
+
+function guardarParametrosCompleto(lista) {
+  localStorage.setItem(PARAMETROS_KEY, JSON.stringify(lista));
+}
+
+function generarKeyParametro(nombre) {
+  return nombre
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function agregarParametro(nombre, unidad) {
+  const nombreLimpio = (nombre || '').trim();
+  if (!nombreLimpio) {
+    alert('Ingresá un nombre para el parámetro.');
+    return null;
+  }
+
+  let key = generarKeyParametro(nombreLimpio);
+  if (!key) key = `param_${Date.now()}`;
+
+  const parametros = cargarParametros();
+  if (parametros.some((p) => p.key === key)) {
+    alert('Ya tenés un parámetro con ese nombre.');
+    return null;
+  }
+
+  const nuevo = { key, label: nombreLimpio, unidad: (unidad || '').trim() };
+  parametros.push(nuevo);
+  guardarParametrosCompleto(parametros);
+  return nuevo;
+}
+
+function eliminarParametro(key) {
+  if (!confirm('¿Eliminar este parámetro? Los análisis ya cargados van a conservar el valor guardado, pero no vas a poder cargarlo de nuevo salvo que lo vuelvas a crear.')) return;
+  const parametros = cargarParametros().filter((p) => p.key !== key);
+  guardarParametrosCompleto(parametros);
+  generarFormulario();
+  renderTodo();
+}
+
+function inicializarPanelParametro() {
+  const btnToggle = document.getElementById('btnToggleAgregarParametro');
+  const panel = document.getElementById('panelAgregarParametro');
+  const btnGuardar = document.getElementById('btnGuardarParametro');
+
+  if (btnToggle && panel) {
+    btnToggle.addEventListener('click', () => {
+      const visible = panel.style.display !== 'none';
+      panel.style.display = visible ? 'none' : 'block';
+      if (!visible) document.getElementById('inputNombreParametro')?.focus();
+    });
+  }
+
+  if (btnGuardar) {
+    btnGuardar.addEventListener('click', () => {
+      const nombre = document.getElementById('inputNombreParametro').value;
+      const unidad = document.getElementById('inputUnidadParametro').value;
+
+      const nuevo = agregarParametro(nombre, unidad);
+      if (!nuevo) return;
+
+      document.getElementById('inputNombreParametro').value = '';
+      document.getElementById('inputUnidadParametro').value = '';
+      panel.style.display = 'none';
+
+      generarFormulario();
+    });
+  }
 }
 
 function cargarAnalisis() {
@@ -79,33 +148,47 @@ function generarFormulario() {
   const contenedor = document.getElementById('camposAnalisis');
   if (!contenedor) return;
 
-  const grupos = {};
-  CAMPOS_ANALISIS.forEach((campo) => {
-    if (!grupos[campo.grupo]) grupos[campo.grupo] = [];
-    grupos[campo.grupo].push(campo);
-  });
+  const parametros = cargarParametros();
 
-  contenedor.innerHTML = Object.entries(grupos).map(([grupo, campos]) => `
-    <div style="margin-top: 18px;">
-      <div style="font-size: 0.8rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">${grupo}</div>
-      <div class="form-grid">
-        ${campos.map((campo) => `
-          <div class="form-group">
-            <label for="campo_${campo.key}">${campo.label} (${campo.unidad})</label>
-            <input type="number" step="0.01" id="campo_${campo.key}" placeholder="Ej. --">
-          </div>
-        `).join('')}
-      </div>
+  if (!parametros.length) {
+    contenedor.innerHTML = '<div class="empty-state">Todavía no creaste ningún parámetro. Usá "+ Agregar parámetro" arriba para empezar — por ejemplo, Hemoglobina Glicosilada, o lo que vos quieras medir.</div>';
+    return;
+  }
+
+  contenedor.innerHTML = `
+    <div class="form-grid">
+      ${parametros.map((p) => `
+        <div class="form-group">
+          <label for="campo_${p.key}" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>${p.label}${p.unidad ? ` (${p.unidad})` : ''}</span>
+            <button type="button" class="entry-delete" data-eliminar-parametro="${p.key}" title="Eliminar este parámetro">✕</button>
+          </label>
+          <input type="number" step="0.01" id="campo_${p.key}" placeholder="Ej. --">
+        </div>
+      `).join('')}
     </div>
-  `).join('');
+  `;
+
+  contenedor.querySelectorAll('[data-eliminar-parametro]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      eliminarParametro(btn.dataset.eliminarParametro);
+    });
+  });
 }
 
 function guardarNuevoAnalisis() {
   const fecha = document.getElementById('inputFechaAnalisis').value;
   const notas = document.getElementById('inputNotasAnalisis').value.trim();
+  const parametros = cargarParametros();
 
   if (!fecha) {
     alert('Ingresá la fecha del análisis.');
+    return;
+  }
+
+  if (!parametros.length) {
+    alert('Creá al menos un parámetro antes de cargar un análisis (botón "+ Agregar parámetro").');
     return;
   }
 
@@ -118,9 +201,10 @@ function guardarNuevoAnalisis() {
   };
 
   let algunCampoCargado = false;
-  CAMPOS_ANALISIS.forEach((campo) => {
-    const valor = parseFloat(document.getElementById(`campo_${campo.key}`).value);
-    entrada[campo.key] = isNaN(valor) ? null : valor;
+  parametros.forEach((p) => {
+    const el = document.getElementById(`campo_${p.key}`);
+    const valor = el ? parseFloat(el.value) : NaN;
+    entrada[p.key] = isNaN(valor) ? null : valor;
     if (!isNaN(valor)) algunCampoCargado = true;
   });
 
@@ -159,20 +243,26 @@ function renderTabla() {
   if (!contenedor) return;
 
   const lista = cargarAnalisis().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  const parametros = cargarParametros();
 
   if (!lista.length) {
     contenedor.innerHTML = '<div class="empty-state">Todavía no cargaste ningún análisis.</div>';
     return;
   }
 
-  const camposConDatos = CAMPOS_ANALISIS.filter((campo) => lista.some((a) => a[campo.key] !== null && a[campo.key] !== undefined));
+  const parametrosConDatos = parametros.filter((p) => lista.some((a) => a[p.key] !== null && a[p.key] !== undefined));
+
+  if (!parametrosConDatos.length) {
+    contenedor.innerHTML = '<div class="empty-state">Tenés análisis cargados, pero sin valores en los parámetros actuales.</div>';
+    return;
+  }
 
   contenedor.innerHTML = `
     <table class="ins-tabla" style="min-width: 600px;">
       <thead>
         <tr style="border-bottom: 2px solid var(--border);">
           <td style="font-weight: 700; color: var(--text-main); padding: 9px 10px;">Fecha</td>
-          ${camposConDatos.map((c) => `<td style="font-weight: 700; color: var(--text-main); padding: 9px 10px; white-space: nowrap;">${c.label}</td>`).join('')}
+          ${parametrosConDatos.map((p) => `<td style="font-weight: 700; color: var(--text-main); padding: 9px 10px; white-space: nowrap;">${p.label}</td>`).join('')}
           <td></td>
         </tr>
       </thead>
@@ -180,7 +270,7 @@ function renderTabla() {
         ${lista.map((a) => `
           <tr>
             <td class="ins-td-hora" style="white-space: nowrap;">${formatearFecha(a.fecha)}</td>
-            ${camposConDatos.map((c) => `<td class="ins-td-unidades">${a[c.key] !== null && a[c.key] !== undefined ? `${a[c.key]} ${c.unidad}` : '—'}</td>`).join('')}
+            ${parametrosConDatos.map((p) => `<td class="ins-td-unidades">${a[p.key] !== null && a[p.key] !== undefined ? `${a[p.key]}${p.unidad ? ' ' + p.unidad : ''}` : '—'}</td>`).join('')}
             <td class="ins-td-accion"><button class="entry-delete" onclick="eliminarAnalisis('${a.id}')" title="Eliminar">✕</button></td>
           </tr>
         `).join('')}
@@ -197,33 +287,34 @@ function renderGraficos() {
   graficosActivos = [];
 
   const lista = cargarAnalisis().sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+  const parametros = cargarParametros();
 
-  const camposConDatos = CAMPOS_ANALISIS.filter((campo) => lista.filter((a) => a[campo.key] !== null && a[campo.key] !== undefined).length > 0);
+  const parametrosConDatos = parametros.filter((p) => lista.filter((a) => a[p.key] !== null && a[p.key] !== undefined).length > 0);
 
-  if (!camposConDatos.length) {
-    contenedor.innerHTML = '<div class="empty-state">Los gráficos van a aparecer acá a medida que cargues análisis.</div>';
+  if (!parametrosConDatos.length) {
+    contenedor.innerHTML = '<div class="empty-state">Los gráficos van a aparecer acá a medida que cargues análisis con valores.</div>';
     return;
   }
 
-  contenedor.innerHTML = camposConDatos.map((campo) => `
+  contenedor.innerHTML = parametrosConDatos.map((p) => `
     <div class="form-card" style="margin-bottom: 16px;">
-      <div style="font-weight: 700; color: var(--text-main); margin-bottom: 10px; font-size: 0.9rem;">${campo.label}</div>
-      <canvas id="grafico_${campo.key}" height="90"></canvas>
+      <div style="font-weight: 700; color: var(--text-main); margin-bottom: 10px; font-size: 0.9rem;">${p.label}${p.unidad ? ` <span style="color: var(--text-muted); font-weight: 400;">(${p.unidad})</span>` : ''}</div>
+      <canvas id="grafico_${p.key}" height="90"></canvas>
     </div>
   `).join('');
 
-  camposConDatos.forEach((campo, i) => {
-    const puntos = lista.filter((a) => a[campo.key] !== null && a[campo.key] !== undefined);
-    const canvas = document.getElementById(`grafico_${campo.key}`);
+  parametrosConDatos.forEach((p, i) => {
+    const puntos = lista.filter((a) => a[p.key] !== null && a[p.key] !== undefined);
+    const canvas = document.getElementById(`grafico_${p.key}`);
     if (!canvas) return;
 
     const chart = new Chart(canvas, {
       type: 'line',
       data: {
-        labels: puntos.map((p) => formatearFecha(p.fecha)),
+        labels: puntos.map((pt) => formatearFecha(pt.fecha)),
         datasets: [{
-          label: campo.label,
-          data: puntos.map((p) => p[campo.key]),
+          label: p.label,
+          data: puntos.map((pt) => pt[p.key]),
           borderColor: COLORES_GRAFICO[i % COLORES_GRAFICO.length],
           backgroundColor: COLORES_GRAFICO[i % COLORES_GRAFICO.length] + '22',
           tension: 0.25,

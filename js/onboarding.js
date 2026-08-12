@@ -87,11 +87,11 @@ function configurarOpciones(gridSelector, campo) {
   });
 }
 
-function irSiguiente() {
+async function irSiguiente() {
   if (!validarPasoActual()) return;
 
   if (currentStep === TOTAL_STEPS) {
-    guardarPerfil();
+    await guardarPerfil();
     window.location.href = '../index.html';
     return;
   }
