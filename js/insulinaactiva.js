@@ -79,6 +79,8 @@ function calcularParaTipo(aplicaciones, tipo, perfilCurva, ahora) {
   let iobTotal = 0;
   let actividadAhora = 0;
   let actividadFutura = 0;
+  let minutosUltimaDosis = null;
+  let unidadesUltimaDosis = null;
 
   aplicaciones
     .filter((a) => a.tipo === tipo)
@@ -95,6 +97,11 @@ function calcularParaTipo(aplicaciones, tipo, perfilCurva, ahora) {
       iobTotal += actual.iob;
       actividadAhora += actual.actividad;
       actividadFutura += futura.actividad;
+
+      if (minutosUltimaDosis === null || minutosTranscurridos < minutosUltimaDosis) {
+        minutosUltimaDosis = minutosTranscurridos;
+        unidadesUltimaDosis = a.unidades;
+      }
     });
 
   const UMBRAL_ESTABLE = 0.00015; // por debajo de esto, la consideramos "sin cambios"
@@ -106,7 +113,17 @@ function calcularParaTipo(aplicaciones, tipo, perfilCurva, ahora) {
     iob: Math.round(iobTotal * 10) / 10,
     actividad: actividadAhora,
     tendencia,
+    minutosUltimaDosis,
+    unidadesUltimaDosis,
   };
+}
+
+function formatearTranscurrido(minutos) {
+  if (minutos === null) return null;
+  if (minutos < 60) return `${Math.round(minutos)} min`;
+  const horas = Math.floor(minutos / 60);
+  const mins = Math.round(minutos % 60);
+  return mins > 0 ? `${horas}h ${mins}min` : `${horas}h`;
 }
 
 function calcularInsulinaActivaTotal() {
@@ -136,7 +153,8 @@ function calcularInsulinaActivaTotal() {
     rapidaActiva: rapida.iob,
     rapidaTendencia: rapida.tendencia,
     basalActiva: basal.iob,
-    basalTendencia: basal.tendencia,
+    basalUltimaDosisTexto: formatearTranscurrido(basal.minutosUltimaDosis),
+    basalUnidadesUltimaDosis: basal.unidadesUltimaDosis,
     totalActiva: Math.round((rapida.iob + basal.iob) * 10) / 10,
     perfilRapidaNombre: perfilRapida.nombre,
     perfilBasalNombre: perfilBasal.nombre,
@@ -160,7 +178,7 @@ function actualizarWidgetInsulinaActiva() {
   const elBasal = document.getElementById('iaValorBasal');
   const elTotal = document.getElementById('iaValorTotal');
   const elTendenciaRapida = document.getElementById('iaTendenciaRapida');
-  const elTendenciaBasal = document.getElementById('iaTendenciaBasal');
+  const elUltimaDosisBasal = document.getElementById('iaUltimaDosisBasal');
   const elDetalle = document.getElementById('iaDetalleModelo');
   const elActualizado = document.getElementById('iaUltimaActualizacion');
 
@@ -172,9 +190,16 @@ function actualizarWidgetInsulinaActiva() {
     elTendenciaRapida.textContent = TEXTOS_TENDENCIA[resultado.rapidaTendencia];
     elTendenciaRapida.className = `ia-tendencia ia-tendencia-${resultado.rapidaTendencia}`;
   }
-  if (elTendenciaBasal) {
-    elTendenciaBasal.textContent = TEXTOS_TENDENCIA[resultado.basalTendencia];
-    elTendenciaBasal.className = `ia-tendencia ia-tendencia-${resultado.basalTendencia}`;
+
+  // Para la basal mostramos tiempo desde la última dosis en vez de una
+  // tendencia — es el dato que realmente importa (si hace mucho que no
+  // se registra una dosis), no si el número "está bajando".
+  if (elUltimaDosisBasal) {
+    if (resultado.basalUltimaDosisTexto) {
+      elUltimaDosisBasal.textContent = `Última dosis: hace ${resultado.basalUltimaDosisTexto} (${resultado.basalUnidadesUltimaDosis} U)`;
+    } else {
+      elUltimaDosisBasal.textContent = 'Sin dosis registrada todavía';
+    }
   }
 
   if (elDetalle) {

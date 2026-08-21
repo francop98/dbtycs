@@ -49,6 +49,25 @@ const saludoUsuario = document.getElementById("saludoUsuario");
 const btnCerrarSesion = document.getElementById("btnCerrarSesion");
 const btnAbrirAuth = document.getElementById("btnAbrirAuth");
 
+// --- Menú hamburguesa (mobile) ---
+const btnMenuMovil = document.getElementById("btnMenuMovil");
+const navbarItems = document.getElementById("navbarItems");
+
+if (btnMenuMovil && navbarItems) {
+  btnMenuMovil.addEventListener("click", () => {
+    navbarItems.classList.toggle("abierto");
+    btnMenuMovil.textContent = navbarItems.classList.contains("abierto") ? "✕" : "☰";
+  });
+
+  // Cerrar el menú al elegir cualquier opción, para no dejarlo abierto al navegar
+  navbarItems.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      navbarItems.classList.remove("abierto");
+      btnMenuMovil.textContent = "☰";
+    });
+  });
+}
+
 // Modales Calculadoras y Ficha
 const modalFicha = document.getElementById("modalFicha");
 const modalBasal = document.getElementById("modalBasal");
